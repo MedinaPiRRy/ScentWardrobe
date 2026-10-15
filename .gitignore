@@ -1,0 +1,44 @@
+# dependencies and build output
+node_modules/
+out/
+dist/
+release/
+*.tsbuildinfo
+
+# the user's real data must never be committed
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+backups/
+manual-pre-*/
+image-restore/
+image-errors*.log
+*.zip
+
+# the optional fragrance dataset is downloaded by the user (see INSTRUCTIONS.md)
+data/
+
+# secrets and local config
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+*.cer
+*.key
+.claude/
+
+# logs, scratch files and OS clutter
+*.log
+scratch*
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# personal working files
+fragrance-wardrobe-prompt.md

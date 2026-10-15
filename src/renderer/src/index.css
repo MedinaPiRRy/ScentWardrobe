@@ -1,0 +1,75 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink-950: #0f0c0a;
+  --color-ink-900: #14100d;
+  --color-ink-800: #1d1712;
+  --color-ink-700: #2a2118;
+  --color-ink-600: #3a2e22;
+  --color-brass-400: #d9b26f;
+  --color-brass-500: #c4964a;
+  --color-cream: #efe6d6;
+  --font-display: 'Georgia', 'Times New Roman', serif;
+}
+
+/* Chart colours follow the theme. */
+:root {
+  --chart-text: #efe6d699;
+  --chart-grid: #3a2e22;
+  color-scheme: dark;
+}
+
+/* Light theme: same names, bright values. Components only use these tokens. */
+:root[data-theme='light'] {
+  --color-ink-950: #e9e0cf;
+  --color-ink-900: #f4eee2;
+  --color-ink-800: #fbf8f1;
+  --color-ink-700: #e8dfcc;
+  --color-ink-600: #d2c5aa;
+  --color-brass-400: #8a5a14;
+  --color-brass-500: #a8711f;
+  --color-cream: #2b2118;
+  --chart-text: #2b2118aa;
+  --chart-grid: #d9cdb4;
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink-900);
+  color: var(--color-cream);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-600);
+  border-radius: 6px;
+}
+
+@keyframes lift-in {
+  from {
+    opacity: 0;
+    transform: translateY(46px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.lift-in {
+  animation: lift-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+input[type='range'] {
+  cursor: pointer;
+}
