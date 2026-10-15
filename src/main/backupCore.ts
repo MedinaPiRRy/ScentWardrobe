@@ -7,6 +7,7 @@ import yauzl from 'yauzl'
 import yazl from 'yazl'
 import type { Db } from './db'
 import { migrations, runMigrations } from './db/migrations'
+import { isStoredImageName } from './security'
 
 export const BACKUP_FORMAT = 'scent-wardrobe-backup'
 const DB_ENTRY = 'scent-wardrobe.db'
@@ -100,6 +101,9 @@ function openZip(path: string): Promise<yauzl.ZipFile> {
   return new Promise((resolve, reject) => yauzl.open(path, { lazyEntries: true, autoClose: true }, (e, z) => (e || !z ? reject(new BackupError('That file is not a valid zip archive.')) : resolve(z))))
 }
 
+/** Upper bounds for what a backup may contain, so a hostile or broken zip cannot fill the disk. */
+export const RESTORE_LIMITS = { dbBytes: 3 * 1024 ** 3, imageBytes: 50 * 1024 ** 2, manifestBytes: 1024 ** 2, entries: 50_000 }
+
 export interface PreparedRestore {
   dir: string
   dbFile: string
@@ -108,7 +112,7 @@ export interface PreparedRestore {
 }
 
 /** Extracts a backup into a temp folder and checks it. Nothing of the live data is touched yet. */
-export async function prepareRestore(zipPath: string): Promise<PreparedRestore> {
+export async function prepareRestore(zipPath: string, limits = RESTORE_LIMITS): Promise<PreparedRestore> {
   const dir = mkdtempSync(join(tmpdir(), 'scent-restore-'))
   const imagesDir = join(dir, 'images')
   mkdirSync(imagesDir)
@@ -118,15 +122,25 @@ export async function prepareRestore(zipPath: string): Promise<PreparedRestore> 
 
   try {
     const zip = await openZip(zipPath)
-    await new Promise<void>((resolve, reject) => {
+    await new Promise<void>((resolve, rejectOuter) => {
+      const reject = (e: unknown) => {
+        zip.close() // release the file before the temp folder is removed
+        rejectOuter(e)
+      }
       zip.on('error', reject)
       zip.on('end', resolve)
+      if (zip.entryCount > limits.entries) return reject(new BackupError('This archive has too many files to be a backup.'))
       zip.on('entry', (entry: yauzl.Entry) => {
         const name = entry.fileName
         const done = () => zip.readEntry()
         if (name.endsWith('/')) return done()
-        const target = name === DB_ENTRY ? dbFile : name === MANIFEST_ENTRY ? join(dir, MANIFEST_ENTRY) : name.startsWith(IMAGE_PREFIX) ? join(imagesDir, basename(name)) : null // never trust paths from an archive
+        const isImage = name.startsWith(IMAGE_PREFIX)
+        // Never trust paths from an archive: only the three known kinds of entry are read, and pictures only under the
+        // names the app itself gives them (16 hex digits and .png), always flattened into the images folder.
+        const target = name === DB_ENTRY ? dbFile : name === MANIFEST_ENTRY ? join(dir, MANIFEST_ENTRY) : isImage && isStoredImageName(basename(name)) ? join(imagesDir, basename(name)) : null
         if (!target) return done()
+        const cap = name === DB_ENTRY ? limits.dbBytes : name === MANIFEST_ENTRY ? limits.manifestBytes : limits.imageBytes
+        if (entry.uncompressedSize > cap) return reject(new BackupError('This archive contains a file that is far larger than a backup should have.'))
         zip.openReadStream(entry, (err, stream) => {
           if (err || !stream) return reject(err ?? new Error('Cannot read the archive.'))
           pipeline(stream, createWriteStream(target)).then(() => {
@@ -183,8 +197,11 @@ export function applyRestore(prepared: PreparedRestore, paths: BackupPaths, keep
     restored.close()
   }
 
-  for (const ext of ['', '-wal', '-shm']) rmSync(paths.dbPath + ext, { force: true })
-  copyFileSync(prepared.dbFile, paths.dbPath)
+  // Copy first, then swap: if the copy fails (disk full), the current database is still there.
+  const incoming = `${paths.dbPath}.restoring`
+  copyFileSync(prepared.dbFile, incoming)
+  for (const ext of ['-wal', '-shm']) rmSync(paths.dbPath + ext, { force: true })
+  renameSync(incoming, paths.dbPath)
 
   mkdirSync(paths.imagesDir, { recursive: true })
   for (const f of readdirSync(prepared.imagesDir)) copyFileSync(join(prepared.imagesDir, f), join(paths.imagesDir, f))

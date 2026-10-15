@@ -137,6 +137,14 @@ export async function restoreBackup(db: Db, paths: BackupPaths, zipPath: string 
     return { ok: true, data: { restarting: true } }
   } catch (e) {
     discardRestore(prepared)
+    if (!db.open) {
+      // The live database was already closed for the swap, so the app cannot carry on: say so and start again.
+      dialog.showErrorBox('Scent Wardrobe', `The restore failed: ${(e as Error).message}
+
+Your previous data is in the backups folder (pre-restore-*.zip). The app will restart now.`)
+      app.relaunch()
+      app.exit(1)
+    }
     return fail('UNKNOWN', `The restore failed: ${(e as Error).message}. Your previous data is still in the backups folder.`)
   }
 }

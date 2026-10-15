@@ -50,7 +50,7 @@ describe('backup and restore', () => {
     const a = liveApp()
     const id = addFragrance(a.db, 'Alpha')
     logWear(a.db, { fragranceId: id, wornAt: '2026-05-01 10:00', sprays: 5, backfilled: false })
-    writeFileSync(join(a.paths.imagesDir, 'bottle.png'), 'PNGDATA')
+    writeFileSync(join(a.paths.imagesDir, '0123456789abcdef.png'), 'PNGDATA')
     const zip = join(a.root, 'backups', 'manual.zip')
 
     const made = await createBackup(a.db, a.paths, zip, { appVersion: '1.2.3' })
@@ -69,7 +69,7 @@ describe('backup and restore', () => {
     expect(restored.prepare('SELECT name FROM fragrances').all()).toEqual([{ name: 'Alpha' }])
     expect(restored.prepare('SELECT remaining_ml AS r FROM bottles').get()).toEqual({ r: 49.5 })
     expect(restored.prepare('SELECT count(*) AS c FROM wear_log').get()).toEqual({ c: 1 })
-    expect(readFileSync(join(b.paths.imagesDir, 'bottle.png'), 'utf8')).toBe('PNGDATA')
+    expect(readFileSync(join(b.paths.imagesDir, '0123456789abcdef.png'), 'utf8')).toBe('PNGDATA')
     restored.close()
     expect(existsSync(prepared.dir)).toBe(false) // temp files cleaned up
   })
@@ -164,14 +164,51 @@ describe('backup and restore', () => {
     const z = new yazl.ZipFile()
     z.addFile(a.paths.dbPath, 'scent-wardrobe.db')
     z.addBuffer(Buffer.from(JSON.stringify({ format: 'scent-wardrobe-backup', version: 1, schemaVersion: 1, appVersion: '1', createdAt: '', fragrances: 0, images: 0, includesDataset: false })), 'manifest.json')
-    z.addBuffer(Buffer.from('x'), 'images/sub/dir/nested.png')
+    z.addBuffer(Buffer.from('x'), 'images/sub/dir/aaaaaaaaaaaaaaaa.png')
     z.addBuffer(Buffer.from('y'), 'somewhere/else.txt')
+    z.addBuffer(Buffer.from('z'), 'images/evil.exe')
+    z.addBuffer(Buffer.from('z'), 'images/..\..\escape.png')
     z.end()
     await new Promise<void>((resolve) => z.outputStream.pipe(require('fs').createWriteStream(nested)).on('close', resolve))
     const prepared = await prepareRestore(nested)
-    expect(readdirSync(prepared.imagesDir)).toEqual(['nested.png'])
+    expect(readdirSync(prepared.imagesDir)).toEqual(['aaaaaaaaaaaaaaaa.png']) // anything not named like the app's own pictures is dropped
     expect(readdirSync(prepared.dir).filter((f) => !f.endsWith('-wal') && !f.endsWith('-shm')).sort()).toEqual(['images', 'manifest.json', 'scent-wardrobe.db'])
     discardRestore(prepared)
+  })
+})
+
+describe('restore limits', () => {
+  it('refuses an archive with an oversized file or too many entries, before extracting it', async () => {
+    const a = liveApp()
+    const yazl = (await import('yazl')).default
+    const make = async (name: string, entries: [Buffer, string][]) => {
+      const file = join(a.root, name)
+      const z = new yazl.ZipFile()
+      for (const [buf, n] of entries) z.addBuffer(buf, n)
+      z.end()
+      await new Promise<void>((resolve) => z.outputStream.pipe(require('fs').createWriteStream(file)).on('close', resolve))
+      return file
+    }
+    const manifest = Buffer.from('{}')
+    const big = await make('big.zip', [[Buffer.alloc(5000), 'scent-wardrobe.db'], [manifest, 'manifest.json']])
+    await expect(prepareRestore(big, { dbBytes: 1000, imageBytes: 1000, manifestBytes: 1000, entries: 10 })).rejects.toThrow(/larger than a backup/)
+    const many = await make('many.zip', [[Buffer.from('a'), 'a.txt'], [Buffer.from('b'), 'b.txt'], [Buffer.from('c'), 'c.txt']])
+    await expect(prepareRestore(many, { dbBytes: 1000, imageBytes: 1000, manifestBytes: 1000, entries: 2 })).rejects.toThrow(/too many files/)
+  })
+
+  it('swaps the database in through a temporary file and leaves nothing behind', async () => {
+    const a = liveApp()
+    addFragrance(a.db, 'Original')
+    const b = liveApp()
+    addFragrance(b.db, 'Restored')
+    const zip = (await createBackup(b.db, b.paths, join(b.root, 'b.zip'))).path
+    const prepared = await prepareRestore(zip)
+    a.db.close()
+    applyRestore(prepared, a.paths)
+    expect(readdirSync(a.root).filter((f) => f.includes('.restoring'))).toEqual([])
+    const after = openDatabase(a.paths.dbPath)
+    open.push(after)
+    expect(after.prepare('SELECT name FROM fragrances').all()).toEqual([{ name: 'Restored' }])
   })
 })
 
