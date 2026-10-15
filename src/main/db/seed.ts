@@ -62,7 +62,7 @@ function familyOf(note: string): string | null {
 export const SAMPLE_FRAGRANCES: SeedFragrance[] = [
   {
     name: 'Sauvage', house: 'Dior', year: 2015, concentration: 'EDT', perfumers: 'François Demachy', gender: 'for men',
-    description: 'A radically fresh composition, dictated by a name that has the ring of a manifesto.',
+    description: 'Bright, peppery and ambery: a clean, versatile everyday scent.',
     notes: {
       top: ['Calabrian Bergamot', 'Pepper'],
       heart: ['Sichuan Pepper', 'Lavender', 'Pink Pepper', 'Vetiver', 'Patchouli', 'Geranium', 'Elemi'],
@@ -74,7 +74,7 @@ export const SAMPLE_FRAGRANCES: SeedFragrance[] = [
   },
   {
     name: 'Aventus', house: 'Creed', year: 2010, concentration: 'EDP', perfumers: 'Olivier Creed, Erwin Creed', gender: 'for men',
-    description: 'A sophisticated scent for the dynamic man, inspired by the dramatic life of an emperor.',
+    description: 'A fruity-smoky woody scent with a pineapple opening.',
     notes: {
       top: ['Bergamot', 'Black Currant', 'Apple', 'Pineapple'],
       heart: ['Birch', 'Patchouli', 'Moroccan Jasmine', 'Rose'],
@@ -87,7 +87,7 @@ export const SAMPLE_FRAGRANCES: SeedFragrance[] = [
   },
   {
     name: 'Bleu de Chanel', house: 'Chanel', year: 2014, concentration: 'EDP', perfumers: 'Jacques Polge', gender: 'for men',
-    description: 'An aromatic-woody fragrance for the man who defies convention.',
+    description: 'A fresh, woody-citrus scent that sits comfortably between casual and formal.',
     notes: {
       top: ['Grapefruit', 'Lemon', 'Mint', 'Pink Pepper'],
       heart: ['Ginger', 'Nutmeg', 'Jasmine', 'Iso E Super'],
@@ -99,7 +99,7 @@ export const SAMPLE_FRAGRANCES: SeedFragrance[] = [
   },
   {
     name: 'Black Opium', house: 'Yves Saint Laurent', year: 2014, concentration: 'EDP', perfumers: 'Nathalie Lorson, Marie Salamagne, Olivier Cresp, Honorine Blanc', gender: 'for women',
-    description: 'An addictive gourmand floral with a coffee jolt.',
+    description: 'A sweet, coffee-led gourmand floral for the evening.',
     notes: {
       top: ['Pear', 'Pink Pepper', 'Orange Blossom'],
       heart: ['Coffee', 'Jasmine', 'Bitter Almond', 'Licorice'],
@@ -111,7 +111,7 @@ export const SAMPLE_FRAGRANCES: SeedFragrance[] = [
   },
   {
     name: 'Tobacco Vanille', house: 'Tom Ford', year: 2007, concentration: 'EDP', perfumers: 'Harry Fremont', gender: 'unisex',
-    description: 'An opulent, warm and spicy composition of tobacco leaf and vanilla.',
+    description: 'A rich, warm blend of tobacco, spice and vanilla.',
     notes: {
       top: ['Tobacco Leaf', 'Spicy Notes'],
       heart: ['Tonka Bean', 'Vanilla', 'Cacao', 'Tobacco Blossom'],
@@ -132,7 +132,7 @@ export const SAMPLE_FRAGRANCES: SeedFragrance[] = [
   },
   {
     name: 'Acqua di Giò', house: 'Giorgio Armani', year: 1996, concentration: 'EDT', perfumers: 'Alberto Morillas', gender: 'for men',
-    description: 'A classic marine fragrance inspired by the Mediterranean island of Pantelleria.',
+    description: 'A classic marine freshness with citrus and a touch of woods.',
     notes: {
       top: ['Lime', 'Lemon', 'Bergamot', 'Jasmine', 'Orange', 'Mandarin'],
       heart: ['Sea Notes', 'Peach', 'Freesia', 'Hyacinth', 'Rosemary', 'Calone'],
@@ -144,7 +144,7 @@ export const SAMPLE_FRAGRANCES: SeedFragrance[] = [
   },
   {
     name: "Angels' Share", house: 'By Kilian', year: 2020, concentration: 'EDP', perfumers: 'Calice Becker', gender: 'unisex',
-    description: 'Cognac aged in oak casks, with cinnamon, tonka and praline.',
+    description: 'A boozy, sweet, woody scent with cinnamon and praline.',
     notes: {
       top: ['Cognac'],
       heart: ['Cinnamon', 'Tonka Bean', 'Oak'],
@@ -168,7 +168,7 @@ export const SAMPLE_FRAGRANCES: SeedFragrance[] = [
   },
   {
     name: 'Light Blue', house: 'Dolce&Gabbana', year: 2001, concentration: 'EDT', perfumers: 'Olivier Cresp', gender: 'for women',
-    description: 'A fresh, sparkling citrus-floral built for a Sicilian summer.',
+    description: 'A fresh, sparkling citrus-floral for hot days.',
     notes: {
       top: ['Sicilian Lemon', 'Apple', 'Cedar', 'Bellflower'],
       heart: ['Jasmine', 'White Rose', 'Bamboo'],
@@ -180,7 +180,7 @@ export const SAMPLE_FRAGRANCES: SeedFragrance[] = [
   },
   {
     name: 'Cool Water', house: 'Davidoff', year: 1988, concentration: 'EDT', perfumers: 'Pierre Bourdon', gender: 'for men',
-    description: 'The aquatic that defined an era of fresh men\'s fragrances.',
+    description: "A cool, aquatic scent from the era of fresh men's fragrances.",
     notes: { top: ['Mint', 'Lavender', 'Coriander'], heart: ['Jasmine', 'Neroli', 'Sandalwood'], base: ['Musk', 'Oakmoss', 'Amber'] },
     accords: { aquatic: 100, fresh: 85, aromatic: 70, woody: 40, musky: 35 },
     community: [60, 180, 520, 110, 700, 120, 3.0, 2.8],
@@ -189,7 +189,7 @@ export const SAMPLE_FRAGRANCES: SeedFragrance[] = [
   },
   {
     name: 'Kouros', house: 'Yves Saint Laurent', year: 1981, concentration: 'EDT', perfumers: 'Pierre Bourdon', gender: 'for men',
-    description: 'A famously animalic, civet-heavy aromatic.',
+    description: 'A strongly animalic, aromatic classic.',
     notes: { top: ['Aldehydes', 'Coriander', 'Artemisia'], heart: ['Carnation', 'Patchouli', 'Vetiver'], base: ['Civet', 'Leather', 'Amber'] },
     accords: { animalic: 100, aromatic: 80, leather: 60, 'warm spicy': 50, powdery: 40, amber: 40 },
     community: [350, 220, 90, 300, 300, 420, 4.0, 3.8],
