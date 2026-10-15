@@ -55,7 +55,7 @@
   "productName": "Scent Wardrobe",
   "author": "MedinaPiRRy",
   "license": "MIT",
-  "homepage": "https://github.com/MedinaPiRRy/scent-wardrobe#readme",
+  "homepage": "https://github.com/MedinaPiRRy/ScentWardrobe#readme",
   "build": {
     "appId": "com.scentwardrobe.app",
     "productName": "Scent Wardrobe",
@@ -122,9 +122,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MedinaPiRRy/scent-wardrobe.git"
+    "url": "git+https://github.com/MedinaPiRRy/ScentWardrobe.git"
   },
   "bugs": {
-    "url": "https://github.com/MedinaPiRRy/scent-wardrobe/issues"
+    "url": "https://github.com/MedinaPiRRy/ScentWardrobe/issues"
   }
 }

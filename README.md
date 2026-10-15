@@ -97,7 +97,7 @@ scripts/        test runner, icon generator, third-party notice generator
 
 ## Download and install
 
-Get the installer for your system from the [Releases](https://github.com/MedinaPiRRy/scent-wardrobe/releases) page:
+Get the installer for your system from the [Releases](https://github.com/MedinaPiRRy/ScentWardrobe/releases) page:
 
 | System | File |
 | --- | --- |

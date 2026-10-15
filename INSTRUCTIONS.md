@@ -188,6 +188,9 @@ search, so they never fill your shelves, and the file is read in a stream so ver
 - **Back up automatically once a week** is on by default and keeps the newest 8 automatic backups.
 - **Restore from a file…** checks the file, asks you to confirm, saves a *pre-restore* safety backup of your current
   data first, then swaps the data and restarts the app.
+- **Before you share a backup:** it contains everything in your library plus your settings, including the city you chose
+  for the weather (its name and coordinates) and the last Fragrantica username you typed. Do not post a backup
+  publicly or send it to someone you do not trust. The CSV export contains only your fragrance rows, no settings.
 - The imported dataset can be very large, so backups leave it out unless you tick *Include the imported dataset*.
 - **Settings → Export** writes your fragrances to a CSV that opens in Excel (one row per fragrance, with notes, accords,
   bottle levels, wear statistics and prices).
