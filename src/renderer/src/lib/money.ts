@@ -8,6 +8,8 @@ const EVENT = 'scent:currency-changed'
 
 /** Formats an amount in the given ISO currency code; falls back to "12.50 XYZ" for a code the runtime does not know. */
 export function formatMoney(n: number, currency: string = DEFAULT_CURRENCY): string {
+  // Round to cents first and drop a negative zero, so -0.001 does not show up as "-$0.00".
+  n = Math.round(n * 100) / 100 + 0
   try {
     return n.toLocaleString(undefined, { style: 'currency', currency, maximumFractionDigits: 2 })
   } catch {
@@ -56,8 +58,8 @@ export function compareBottle(b: Pick<Bottle, 'price' | 'marketPrice' | 'sizeMl'
   return {
     paid,
     market,
-    saved: both ? Math.round((market - paid) * 100) / 100 : null,
-    savedPercent: both && market > 0 ? Math.round(((market - paid) / market) * 1000) / 10 : null,
+    saved: both ? Math.round((market - paid) * 100) / 100 + 0 : null,
+    savedPercent: both && market > 0 ? Math.round(((market - paid) / market) * 1000) / 10 + 0 : null,
     paidPerMl: paid != null && b.sizeMl > 0 ? Math.round((paid / b.sizeMl) * 100) / 100 : null,
     marketPerMl: market != null && b.sizeMl > 0 ? Math.round((market / b.sizeMl) * 100) / 100 : null
   }

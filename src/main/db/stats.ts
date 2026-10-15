@@ -50,7 +50,7 @@ export function computeOverview(db: Db, now = new Date()): StatsOverview {
 
   const row = (p: PerFragrance, value: number): LeaderRow => ({ id: p.id, name: p.name, house: p.house, value, wears: p.wears })
   const byValueDesc = (a: LeaderRow, b: LeaderRow) => b.value - a.value || b.wears - a.wears || a.name.localeCompare(b.name)
-  const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d
+  const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d + 0 // + 0 turns -0 into 0
 
   const mostWorn = per.filter((p) => collectionIds.has(p.id) && p.wears > 0).map((p) => row(p, p.wears)).sort(byValueDesc).slice(0, 10)
 
@@ -95,7 +95,7 @@ export function computeOverview(db: Db, now = new Date()): StatsOverview {
   const cutoff = localDate(new Date(now.getTime() - 30 * DAY_MS))
   const wears30 = (db.prepare('SELECT count(*) AS n FROM wear_log WHERE substr(worn_at, 1, 10) >= ?').get(cutoff) as { n: number }).n
 
-  const round2 = (n: number) => Math.round(n * 100) / 100
+  const round2 = (n: number) => Math.round(n * 100) / 100 + 0
   const priceRows: PriceRow[] = (
     db
       .prepare(

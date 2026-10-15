@@ -70,3 +70,30 @@ describe('grouping and counting', () => {
     expect([0, 1, 2, 3, 4, 9].map(heatLevel)).toEqual([0, 1, 2, 3, 4, 4])
   })
 })
+
+describe('daylight saving and boundaries', () => {
+  // Weeks must always be seven distinct, consecutive days, even across the clock changes (US 8 Mar and 1 Nov 2026, EU 29 Mar and 25 Oct 2026).
+  it.each([[2026, 2], [2026, 3], [2026, 9], [2026, 10], [2026, 11], [2027, 0]])('has no repeated or skipped day in %i-%i', (y, m) => {
+    const days = monthGrid(y, m).flat()
+    const keys = days.map((c) => c.date)
+    expect(new Set(keys).size).toBe(keys.length)
+    for (let i = 1; i < keys.length; i++) {
+      const a = new Date(`${keys[i - 1]}T12:00:00Z`).getTime()
+      const b = new Date(`${keys[i]}T12:00:00Z`).getTime()
+      expect(b - a).toBe(86_400_000)
+    }
+    expect(days.filter((c) => c.inMonth)).toHaveLength(new Date(y, m + 1, 0).getDate())
+  })
+  it('starts every week on Monday', () => {
+    for (const w of monthGrid(2026, 9)) expect(new Date(`${w[0].date}T12:00:00`).getDay()).toBe(1)
+  })
+  it('rolls over the year in both directions', () => {
+    expect(shiftMonth(2026, 11, 1)).toEqual({ year: 2027, month0: 0 })
+    expect(shiftMonth(2026, 0, -1)).toEqual({ year: 2025, month0: 11 })
+    expect(shiftMonth(2026, 5, 24)).toEqual({ year: 2028, month0: 5 })
+  })
+  it('handles February in a leap year', () => {
+    expect(monthRange(2028, 1)).toEqual({ from: '2028-02-01', to: '2028-02-29' })
+    expect(monthRange(2027, 1)).toEqual({ from: '2027-02-01', to: '2027-02-28' })
+  })
+})

@@ -35,3 +35,18 @@ describe('formatMoney', () => {
     expect(isCurrencyCode('eur')).toBe(false)
   })
 })
+
+describe('rounding edge cases', () => {
+  it('never shows a negative zero', () => {
+    expect(formatMoney(-0, 'USD')).not.toMatch(/-/)
+    expect(formatMoney(-0.001, 'USD')).not.toMatch(/-/)
+    expect(Object.is(compareBottle({ price: 100.001, marketPrice: 100, sizeMl: 50 }).saved, -0)).toBe(false)
+    expect(Object.is(compareBottle({ price: 100.001, marketPrice: 100, sizeMl: 50 }).savedPercent, -0)).toBe(false)
+  })
+  it('handles zero prices and zero sizes', () => {
+    const c = compareBottle({ price: 0, marketPrice: 50, sizeMl: 0 })
+    expect(c.paidPerMl).toBeNull()
+    expect(c.saved).toBe(50)
+    expect(compareBottle({ price: 0, marketPrice: 0, sizeMl: 10 })).toMatchObject({ saved: 0, savedPercent: null, paidPerMl: 0 })
+  })
+})
