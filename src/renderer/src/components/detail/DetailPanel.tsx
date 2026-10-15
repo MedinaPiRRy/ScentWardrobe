@@ -155,7 +155,7 @@ export default function DetailPanel({ id, rev, onClose, onChanged, onEdit, onMov
 
   const panel = useRef<HTMLDivElement>(null)
   useEscapeClose(onClose, !confirmDelete)
-  useFocusTrap(panel, !!d)
+  useFocusTrap(panel, !!d, false)
 
   const changed = () => {
     onChanged()

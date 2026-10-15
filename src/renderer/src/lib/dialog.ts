@@ -41,13 +41,14 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([t
  * Keeps keyboard focus inside a dialog: focus moves in when it opens (to the first field, or the container), Tab and
  * Shift+Tab wrap around, and focus goes back to where it was when the dialog closes.
  */
-export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true): void {
+export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true, focusFirstField = true): void {
   useEffect(() => {
     const root = ref.current
     if (!root || !active) return
     const before = document.activeElement as HTMLElement | null
     const items = () => [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null || el === document.activeElement)
-    const first = root.querySelector<HTMLElement>('[autofocus], input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea, select') ?? items()[0]
+    // Small forms start in their first field; a long panel starts on the panel itself so nothing scrolls away.
+    const first = focusFirstField ? (root.querySelector<HTMLElement>('[autofocus], input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea, select') ?? items()[0]) : null
     if (first) first.focus({ preventScroll: true })
     else {
       root.tabIndex = -1

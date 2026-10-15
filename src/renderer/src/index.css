@@ -66,6 +66,15 @@
 :root[data-theme='light'] .text-red-400 {
   color: #b42318;
 }
+:root[data-theme='light'] .bg-red-900\/50,
+:root[data-theme='light'] .bg-red-900\/60,
+:root[data-theme='light'] .bg-red-950\/30,
+:root[data-theme='light'] .bg-red-950\/40 {
+  background-color: #fde6e3;
+}
+:root[data-theme='light'] .bg-emerald-900\/50 {
+  background-color: #d8f1e3;
+}
 :root[data-theme='light'] .text-emerald-200,
 :root[data-theme='light'] .text-emerald-300,
 :root[data-theme='light'] .text-emerald-400 {
