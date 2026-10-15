@@ -1,7 +1,7 @@
 {
   "name": "scent-wardrobe",
   "version": "1.0.0",
-  "description": "Scent Wardrobe: a personal fragrance collection app for Windows",
+  "description": "Scent Wardrobe: a personal, offline fragrance collection manager (shelves, layering, wear diary, stats)",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -11,9 +11,13 @@
     "postinstall": "electron-rebuild -f -w better-sqlite3",
     "test": "node scripts/test.mjs",
     "typecheck": "tsc --noEmit",
-    "dist": "electron-vite build && electron-builder --win nsis",
+    "dist": "electron-vite build && electron-builder --win nsis --x64 --publish never",
     "dist:dir": "electron-vite build && electron-builder --win --dir",
-    "icon": "electron scripts/make-icon.cjs"
+    "icon": "electron scripts/make-icon.cjs",
+    "dist:win": "electron-vite build && electron-builder --win nsis --x64 --publish never",
+    "dist:mac:x64": "electron-vite build && electron-builder --mac dmg --x64 --publish never",
+    "dist:mac:arm64": "electron-vite build && electron-builder --mac dmg --arm64 --publish never",
+    "notice": "node scripts/generate-notice.mjs"
   },
   "type": "commonjs",
   "dependencies": {
@@ -50,18 +54,19 @@
   "productName": "Scent Wardrobe",
   "author": "MedinaPiRRy",
   "license": "MIT",
-  "homepage": ".",
+  "homepage": "https://github.com/MedinaPiRRy/scent-wardrobe#readme",
   "build": {
     "appId": "com.scentwardrobe.app",
     "productName": "Scent Wardrobe",
-    "copyright": "Personal use",
+    "copyright": "Copyright © 2026 MedinaPiRRy. MIT licence.",
     "directories": {
       "output": "dist",
       "buildResources": "build"
     },
     "files": [
       "out/**/*",
-      "package.json"
+      "package.json",
+      "!**/*.map"
     ],
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**"
@@ -75,7 +80,8 @@
           ]
         }
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "artifactName": "Scent-Wardrobe-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -86,6 +92,38 @@
       "shortcutName": "Scent Wardrobe",
       "deleteAppDataOnUninstall": false,
       "artifactName": "Scent-Wardrobe-Setup-${version}.${ext}"
+    },
+    "extraFiles": [
+      "LICENSE",
+      "NOTICE.md",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.lifestyle",
+      "icon": "build/icon.png",
+      "artifactName": "Scent-Wardrobe-${version}-mac-${arch}.${ext}",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Scent Wardrobe ${version}",
+      "artifactName": "Scent-Wardrobe-${version}-mac-${arch}.${ext}"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MedinaPiRRy/scent-wardrobe.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MedinaPiRRy/scent-wardrobe/issues"
   }
 }

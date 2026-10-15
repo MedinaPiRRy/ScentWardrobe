@@ -1,0 +1,64 @@
+name: Release
+
+# Pushing a tag such as v1.0.0 builds the installers and attaches them to a GitHub Release.
+# The builds are NOT code-signed or notarized (see INSTRUCTIONS.md for how to open them).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows (x64)
+            os: windows-latest
+            script: dist:win
+          # Intel Mac. GitHub retired macos-13; macos-15-intel is its replacement.
+          - name: macOS (Intel)
+            os: macos-15-intel
+            script: dist:mac:x64
+          - name: macOS (Apple Silicon)
+            os: macos-14
+            script: dist:mac:arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run ${{ matrix.script }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: installers/*
+          generate_release_notes: true
+          body: |
+            Installers for Windows (x64) and macOS (Intel and Apple Silicon). They are not signed, so Windows
+            SmartScreen and macOS Gatekeeper will warn the first time: see the "Installing" section of INSTRUCTIONS.md.
