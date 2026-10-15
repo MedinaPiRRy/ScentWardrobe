@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { FragranceDetail, FragranceSummary, HadReason, NoteEntry, WardrobeKind, WearEntry } from '@shared/types'
+import { useEscapeClose, useFocusTrap } from '../../lib/dialog'
 import { HAD_REASON_LABEL, WARDROBE_LABEL, WARDROBES } from '../../lib/shelf'
 import { HadDialog } from '../WardrobeDialogs'
 import BottleSvg from '../BottleSvg'
@@ -152,11 +153,9 @@ export default function DetailPanel({ id, rev, onClose, onChanged, onEdit, onMov
     setNote(null)
   }, [id])
 
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && !confirmDelete && onClose()
-    window.addEventListener('keydown', key)
-    return () => window.removeEventListener('keydown', key)
-  }, [onClose, confirmDelete])
+  const panel = useRef<HTMLDivElement>(null)
+  useEscapeClose(onClose, !confirmDelete)
+  useFocusTrap(panel, !!d)
 
   const changed = () => {
     onChanged()
@@ -192,8 +191,10 @@ export default function DetailPanel({ id, rev, onClose, onChanged, onEdit, onMov
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-6" onMouseDown={onClose}>
       <div
         className="lift-in flex max-h-full w-full max-w-5xl overflow-hidden rounded-2xl border border-ink-600 bg-ink-800 shadow-2xl"
+        ref={panel}
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
+        aria-modal="true"
         aria-label={d.name}
       >
         {/* left rail */}

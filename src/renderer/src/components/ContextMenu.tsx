@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useEscapeClose } from '../lib/dialog'
 
 export interface MenuItem {
   label: string
@@ -7,16 +8,14 @@ export interface MenuItem {
 }
 
 export default function ContextMenu({ x, y, items, onClose }: { x: number; y: number; items: MenuItem[]; onClose: () => void }) {
+  useEscapeClose(onClose)
   useEffect(() => {
     const close = () => onClose()
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('click', close)
     window.addEventListener('blur', close)
-    window.addEventListener('keydown', key)
     return () => {
       window.removeEventListener('click', close)
       window.removeEventListener('blur', close)
-      window.removeEventListener('keydown', key)
     }
   }, [onClose])
 

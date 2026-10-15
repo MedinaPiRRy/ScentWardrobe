@@ -1,16 +1,17 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import type { BottleType, FragranceSummary, NewBottleInput } from '@shared/types'
+import { useEscapeClose, useFocusTrap } from '../lib/dialog'
 import { QUICK_SIZES_ML } from '../lib/shelf'
 
 export function Modal({ title, onClose, children, wide, xl }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; xl?: boolean }) {
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', key)
-    return () => window.removeEventListener('keydown', key)
-  }, [onClose])
+  const box = useRef<HTMLDivElement>(null)
+  useEscapeClose(onClose)
+  useFocusTrap(box)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-6" onMouseDown={onClose}>
       <div
+        ref={box}
+        aria-modal="true"
         className={`max-h-full w-full overflow-y-auto rounded-xl border border-ink-600 bg-ink-800 p-6 shadow-2xl ${xl ? 'max-w-4xl' : wide ? 'max-w-2xl' : 'max-w-md'}`}
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
