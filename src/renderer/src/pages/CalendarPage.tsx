@@ -147,9 +147,9 @@ export default function CalendarPage() {
                     key={c.date}
                     onClick={() => setDay(c.date)}
                     aria-label={`${c.date}${ids.length ? `, ${ids.length} fragrance${ids.length === 1 ? '' : 's'} worn` : ''}`}
-                    className={`relative min-h-[104px] border-b border-r border-ink-700 p-1.5 text-left transition-colors hover:bg-ink-700/60 ${c.inMonth ? '' : 'bg-ink-900/40 opacity-55'}`}
+                    className={`relative min-h-[104px] border-b border-r border-ink-700 p-1.5 text-left transition-colors hover:bg-ink-700/60 ${c.inMonth ? '' : 'bg-ink-900/40'}`}
                   >
-                    <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs ${isToday ? 'bg-brass-500 font-bold text-[#17110b]' : 'text-cream/70'}`}>{c.day}</span>
+                    <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs ${isToday ? 'bg-brass-500 font-bold text-[#17110b]' : c.inMonth ? 'text-cream/80' : 'text-cream/50'}`}>{c.day}</span>
                     <div className="mt-1 flex items-end gap-1">
                       {shown.map((id) => {
                         const f = fragrances.get(id)

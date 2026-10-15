@@ -238,7 +238,7 @@ export default function FragranticaProfileDialog({ onClose, onDone }: { onClose:
 function Row({ i }: { i: MemberPreviewItem }) {
   const tag = i.status === 'new' ? 'New' : i.status === 'exists' ? 'Already here' : 'Repeated'
   return (
-    <div className={`flex items-center justify-between gap-3 border-b border-ink-700 px-3 py-1.5 last:border-0 ${i.status === 'new' ? '' : 'opacity-55'}`}>
+    <div className={`flex items-center justify-between gap-3 border-b border-ink-700 px-3 py-1.5 last:border-0 ${i.status === 'new' ? '' : 'opacity-75'}`}>
       <span className="min-w-0 truncate">
         {i.name} <span className="text-cream/45">{i.house}</span>
       </span>

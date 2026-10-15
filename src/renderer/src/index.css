@@ -26,12 +26,56 @@
   --color-ink-800: #fbf8f1;
   --color-ink-700: #e8dfcc;
   --color-ink-600: #d2c5aa;
-  --color-brass-400: #8a5a14;
+  --color-brass-400: #6e4609;
   --color-brass-500: #a8711f;
   --color-cream: #2b2118;
-  --chart-text: #2b2118aa;
+  --chart-text: #2b2118b8;
   --chart-grid: #d9cdb4;
   color-scheme: light;
+}
+
+/*
+ * Muted text. Components dim text with text-cream/NN; anything fainter than the floor would fail WCAG AA contrast (4.5:1),
+ * so it is raised to the floor of the current theme (checked against the panel colours of both themes).
+ */
+:root {
+  --muted-floor: 60%;
+}
+:root[data-theme='light'] {
+  --muted-floor: 72%;
+}
+.text-cream\/20,
+.text-cream\/25,
+.text-cream\/30,
+.text-cream\/35,
+.text-cream\/40,
+.text-cream\/45,
+.text-cream\/50,
+.text-cream\/55 {
+  color: color-mix(in oklab, var(--color-cream) var(--muted-floor), transparent);
+}
+:root[data-theme='light'] .text-cream\/60,
+:root[data-theme='light'] .text-cream\/65,
+:root[data-theme='light'] .text-cream\/70 {
+  color: color-mix(in oklab, var(--color-cream) 74%, transparent);
+}
+
+/* Status colours written for the dark theme are too pale on the light one. */
+:root[data-theme='light'] .text-red-200,
+:root[data-theme='light'] .text-red-300,
+:root[data-theme='light'] .text-red-400 {
+  color: #b42318;
+}
+:root[data-theme='light'] .text-emerald-200,
+:root[data-theme='light'] .text-emerald-300,
+:root[data-theme='light'] .text-emerald-400 {
+  color: #046c3b;
+}
+
+/* A drop-down sizes itself to its longest option; a very long fragrance name must not widen the page. */
+select {
+  max-width: 100%;
+  text-overflow: ellipsis;
 }
 
 html,

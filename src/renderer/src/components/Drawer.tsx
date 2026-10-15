@@ -39,6 +39,8 @@ export default function Drawer({ open, onToggle, count, children }: Props) {
         className="grid"
         style={{ gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 520ms cubic-bezier(.2,.8,.2,1)' }}
         aria-hidden={!open}
+        // A closed drawer is not just hidden: nothing in it can be reached with Tab or read out.
+        inert={!open}
       >
         <div className="min-h-0 overflow-hidden">
           <div
