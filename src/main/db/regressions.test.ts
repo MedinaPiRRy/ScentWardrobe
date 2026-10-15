@@ -59,3 +59,18 @@ describe('oversized text from outside', () => {
     expect(make('a'.repeat(300)).ok).toBe(true)
   })
 })
+
+describe('updating a bottle', () => {
+  it('keeps the level, spray size and status when they are left out', async () => {
+    const { updateBottle } = await import('./editing')
+    const { db, id } = setup()
+    const bottle = db.prepare('SELECT id FROM bottles WHERE fragrance_id = ?').get(id) as { id: number }
+    db.prepare("UPDATE bottles SET remaining_ml = 20, ml_per_spray = 0.07, status = 'empty' WHERE id = ?").run(bottle.id)
+    expect(updateBottle(db, bottle.id, { type: 'full bottle', sizeMl: 100, price: 50 }).ok).toBe(true)
+    expect(db.prepare('SELECT remaining_ml AS r, ml_per_spray AS s, status, price FROM bottles WHERE id = ?').get(bottle.id)).toEqual({ r: 20, s: 0.07, status: 'empty', price: 50 })
+    // Shrinking the size never leaves more liquid than the bottle holds.
+    updateBottle(db, bottle.id, { type: 'full bottle', sizeMl: 10 })
+    expect((db.prepare('SELECT remaining_ml AS r FROM bottles WHERE id = ?').get(bottle.id) as { r: number }).r).toBe(10)
+    expect(updateBottle(db, 9999, { type: 'decant', sizeMl: 5 }).ok).toBe(false)
+  })
+})

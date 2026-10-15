@@ -273,18 +273,19 @@ export function addBottle(db: Db, fragranceId: number, b: BottleInput): Result<n
 export function updateBottle(db: Db, bottleId: number, b: BottleInput): Result<null> {
   return toResult(() => {
     checkBottle(b)
-    const r = db
-      .prepare(
-        `UPDATE bottles SET type = ?, size_ml = ?, remaining_ml = ?, ml_per_spray = ?, purchase_date = ?, price = ?,
-           bought_at = ?, batch_code = ?, opened_date = ?, status = ?,
-           market_price = ?, market_checked_on = ?, market_source = ? WHERE id = ?`
-      )
-      .run(
-        b.type, b.sizeMl, b.remainingMl ?? b.sizeMl, b.mlPerSpray ?? 0.1, clean(b.purchaseDate), b.price ?? null,
-        clean(b.boughtAt), clean(b.batchCode), clean(b.openedDate), b.status ?? 'active',
-        b.marketPrice ?? null, b.marketPrice == null ? null : clean(b.marketCheckedOn), b.marketPrice == null ? null : clean(b.marketSource), bottleId
-      )
-    if (r.changes === 0) throw new AppError('NOT_FOUND', 'Bottle not found.')
+    const cur = db.prepare('SELECT remaining_ml, ml_per_spray, status FROM bottles WHERE id = ?').get(bottleId) as { remaining_ml: number; ml_per_spray: number; status: string } | undefined
+    if (!cur) throw new AppError('NOT_FOUND', 'Bottle not found.')
+    // Fields that are left out keep their current value (a partial update must not refill or reactivate a bottle).
+    const remaining = Math.min(b.remainingMl ?? cur.remaining_ml, b.sizeMl)
+    db.prepare(
+      `UPDATE bottles SET type = ?, size_ml = ?, remaining_ml = ?, ml_per_spray = ?, purchase_date = ?, price = ?,
+         bought_at = ?, batch_code = ?, opened_date = ?, status = ?,
+         market_price = ?, market_checked_on = ?, market_source = ? WHERE id = ?`
+    ).run(
+      b.type, b.sizeMl, remaining, b.mlPerSpray ?? cur.ml_per_spray, clean(b.purchaseDate), b.price ?? null,
+      clean(b.boughtAt), clean(b.batchCode), clean(b.openedDate), b.status ?? cur.status,
+      b.marketPrice ?? null, b.marketPrice == null ? null : clean(b.marketCheckedOn), b.marketPrice == null ? null : clean(b.marketSource), bottleId
+    )
     return null
   })
 }
