@@ -5,7 +5,9 @@ export type CsvCell = string | number | null | undefined
 /** RFC 4180: quote fields containing a comma, quote or line break, and double any quotes. */
 export function csvField(v: CsvCell): string {
   if (v === null || v === undefined) return ''
-  const s = String(v)
+  let s = String(v)
+  // A text cell that starts like a formula would run in Excel or Sheets: a leading apostrophe keeps it as text.
+  if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
