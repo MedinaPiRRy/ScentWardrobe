@@ -24,3 +24,18 @@ export function isAllowedImageUrl(raw: string): boolean {
 
 /** The name the app gives a cached picture (see images.ts): 16 hex digits and .png. */
 export const isStoredImageName = (s: string): boolean => /^[0-9a-f]{16}\.png$/.test(s)
+
+/**
+ * True for the app's own page: the packaged file:// page, or the dev server's origin when running `npm run dev`.
+ * `devUrl` is only set in development (electron-vite).
+ */
+export function isTrustedSender(frameUrl: string, devUrl?: string): boolean {
+  if (devUrl) {
+    try {
+      return new URL(frameUrl).origin === new URL(devUrl).origin
+    } catch {
+      return false
+    }
+  }
+  return /^file:\/\/\/.*\/renderer\/index\.html(?:[?#].*)?$/i.test(frameUrl)
+}

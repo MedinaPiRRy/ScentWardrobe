@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { csvField } from './db/exportCsv'
 import { isFragranticaUrl } from './fragrantica/fragranticaParser'
-import { isAllowedImageUrl, isFragranticaHost, isStoredImageName } from './security'
+import { isAllowedImageUrl, isFragranticaHost, isStoredImageName, isTrustedSender } from './security'
 
 describe('Fragrantica hosts', () => {
   it('accepts the real sites and their subdomains', () => {
@@ -48,5 +48,18 @@ describe('CSV cells', () => {
     expect(csvField(-5)).toBe('-5')
     expect(csvField(null)).toBe('')
     expect(csvField('café ✓ 😀')).toBe('café ✓ 😀')
+  })
+})
+
+describe('IPC sender', () => {
+  it('trusts the packaged page and refuses web pages', () => {
+    expect(isTrustedSender('file:///C:/Users/x/AppData/Local/Programs/Scent%20Wardrobe/resources/app.asar/out/renderer/index.html')).toBe(true)
+    expect(isTrustedSender('file:///C:/app/resources/app.asar/out/renderer/index.html#/calendar')).toBe(true)
+    for (const u of ['https://www.fragrantica.com/', 'file:///C:/evil/index.html', 'about:blank', '', 'file:///C:/evil/renderer/index.html.evil.html']) expect(isTrustedSender(u), u).toBe(false)
+  })
+  it('in development only trusts the dev server origin', () => {
+    expect(isTrustedSender('http://localhost:5173/#/stats', 'http://localhost:5173')).toBe(true)
+    expect(isTrustedSender('http://localhost:5174/', 'http://localhost:5173')).toBe(false)
+    expect(isTrustedSender('https://www.fragrantica.com/', 'http://localhost:5173')).toBe(false)
   })
 })

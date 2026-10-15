@@ -1,7 +1,7 @@
-import { BrowserWindow } from 'electron'
 import type { Result } from '@shared/types'
 import { fail } from '../db/repo'
 import { enqueue, sleep } from './fragranticaImport'
+import { createScrapeWindow, revealScrapeWindow } from './scrapeWindow'
 import { MEMBER_EXTRACT_SCRIPT, type RawMember } from './memberParser'
 
 const PAGE_TIMEOUT_MS = 30_000
@@ -20,29 +20,12 @@ export function fetchMemberWardrobe(username: string): Promise<Result<RawMember>
   if (!isUsername(name)) return Promise.resolve(fail('INVALID', 'Enter a Fragrantica username, like your_username.'))
 
   return enqueue(async () => {
-    const win = new BrowserWindow({
-      show: true,
-      x: -4000,
-      y: -4000,
-      width: 1280,
-      height: 900,
-      skipTaskbar: true,
-      focusable: false,
-      frame: false,
-      webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, partition: 'persist:fragrantica', backgroundThrottling: false }
-    })
-    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-    win.webContents.session.setPermissionRequestHandler((_wc, _perm, cb) => cb(false))
+    const win = createScrapeWindow()
     let shown = false
     const reveal = (title: string) => {
       if (shown) return
       shown = true
-      win.setFocusable(true)
-      win.setSkipTaskbar(false)
-      win.setTitle(title)
-      win.setSize(1100, 800)
-      win.center()
-      win.show()
+      revealScrapeWindow(win, title, { width: 1100, height: 800 })
     }
     const read = () => win.webContents.executeJavaScript(MEMBER_EXTRACT_SCRIPT, true) as Promise<RawMember>
 

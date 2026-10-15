@@ -10,6 +10,7 @@ import { openSource } from './data/sources'
 import { importFromUrl } from './fragrantica/fragranticaImport'
 import { fetchMemberWardrobe } from './fragrantica/memberFetch'
 import { isFragranticaUrl } from './fragrantica/fragranticaParser'
+import { isTrustedSender } from './security'
 import { buildPreview, parseListText, previewItems } from './fragrantica/memberParser'
 import { existingFragrances, runMemberImport } from './fragrantica/memberRun'
 import { importLocalImage, pickImageFile, readImageDataUrl, reportImageFailure, resolveRemoteImages } from './images'
@@ -240,6 +241,10 @@ export function registerIpc(db: Db, dbPath: string): void {
     'dev:clearSampleData': () => toResult(() => ({ removed: clearSampleData(db) }))
   }
   for (const [channel, fn] of Object.entries(handlers)) {
-    ipcMain.handle(channel, (_event, ...args) => fn(...args))
+    ipcMain.handle(channel, (event, ...args) => {
+      // Only the app's own page may call the main process, never a web page or a pop-up.
+      if (!isTrustedSender(event.senderFrame?.url ?? '', process.env['ELECTRON_RENDERER_URL'])) throw new Error('Request refused: untrusted sender.')
+      return fn(...args)
+    })
   }
 }

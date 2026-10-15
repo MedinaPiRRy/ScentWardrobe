@@ -1,6 +1,7 @@
-import { BrowserWindow } from 'electron'
+import type { BrowserWindow } from 'electron'
 import type { FragranticaResult, Result } from '@shared/types'
 import { fail } from '../db/repo'
+import { createScrapeWindow, parkScrapeWindow, revealScrapeWindow } from './scrapeWindow'
 import { EXTRACT_SCRIPT, isFragranticaUrl, normalizeRaw, type RawFragrantica } from './fragranticaParser'
 
 const MIN_GAP_MS = 3000
@@ -36,19 +37,14 @@ async function scrape(win: BrowserWindow): Promise<RawFragrantica> {
   while (Date.now() < deadline + (shown ? CHALLENGE_TIMEOUT_MS : 0)) {
     if (raw.challenge && !shown) {
       shown = true
-      win.setFocusable(true)
-      win.setSkipTaskbar(false)
-      win.setTitle('Scent Wardrobe: complete the check to continue')
-      win.center()
-      win.show()
+      revealScrapeWindow(win, 'Scent Wardrobe: complete the check to continue')
     }
     if (!raw.challenge && raw.h1 && (raw.accords.length || raw.notes.length)) break
     await sleep(700)
     raw = await run()
   }
   if (shown) {
-    win.setPosition(-4000, -4000)
-    win.setSkipTaskbar(true)
+    parkScrapeWindow(win)
   }
   if (raw.challenge) throw new Error('CHALLENGE')
   if (!raw.h1) throw new Error('NO_PAGE')
@@ -70,21 +66,7 @@ export function importFromUrl(rawUrl: string): Promise<Result<FragranticaResult>
   }
 
   return enqueue(async () => {
-    // Rendered but parked far off-screen: a truly hidden window never triggers the page's lazy loading
-    // (longevity / sillage votes). It is moved on-screen only if the site asks for a human check.
-    const win = new BrowserWindow({
-      show: true,
-      x: -4000,
-      y: -4000,
-      width: 1280,
-      height: 900,
-      skipTaskbar: true,
-      focusable: false,
-      frame: false,
-      webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, partition: 'persist:fragrantica', backgroundThrottling: false }
-    })
-    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-    win.webContents.session.setPermissionRequestHandler((_wc, _perm, cb) => cb(false))
+    const win = createScrapeWindow()
     try {
       try {
         await Promise.race([win.loadURL(url), sleep(PAGE_TIMEOUT_MS).then(() => Promise.reject(new Error('TIMEOUT')))])
