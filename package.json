@@ -17,7 +17,8 @@
     "dist:win": "electron-vite build && electron-builder --win nsis --x64 --publish never",
     "dist:mac:x64": "electron-vite build && electron-builder --mac dmg --x64 --publish never",
     "dist:mac:arm64": "electron-vite build && electron-builder --mac dmg --arm64 --publish never",
-    "notice": "node scripts/generate-notice.mjs"
+    "notice": "node scripts/generate-notice.mjs",
+    "e2e": "node scripts/e2e/smoke.mjs && node scripts/e2e/flows.mjs"
   },
   "type": "commonjs",
   "dependencies": {

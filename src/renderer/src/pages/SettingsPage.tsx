@@ -359,7 +359,7 @@ export default function SettingsPage() {
             <dd>{info ? `${info.fragranceCount} fragrances (schema v${info.schemaVersion})` : ''}</dd>
           </dl>
         )}
-        <p className="mt-3 text-xs text-cream/40">Everything stays on this computer. The only network requests are the weather lookup and, when you ask for it, a Fragrantica page import.</p>
+        <p className="mt-3 text-xs text-cream/40">Everything stays on this computer. The only network requests are the weather and city lookup (Open-Meteo) and, when you ask for it, Fragrantica pages and pictures.</p>
       </Section>
 
       {pickLocation && (
