@@ -8,6 +8,7 @@ import type {
 } from '@shared/types'
 import { accordColor } from '@shared/accordColors'
 import type { Db } from './index'
+import { isStoredImageName } from '../security'
 import { applyMove, AppError, getSummary, toResult, type MoveOptions } from './repo'
 
 const clean = (v: string | null | undefined) => {
@@ -31,6 +32,7 @@ export function upsertAccord(db: Db, name: string, color: string = accordColor(n
 }
 
 function validate(input: FragranceInput): void {
+  if (input.imagePath && !isStoredImageName(input.imagePath)) throw new AppError('INVALID', 'That picture reference is not valid.')
   if (!input.name?.trim()) throw new AppError('INVALID', 'A fragrance needs a name.')
   if (!input.house?.trim()) throw new AppError('INVALID', 'A fragrance needs a house.')
   if (input.year != null && (!Number.isInteger(input.year) || input.year < 1700 || input.year > 2100)) {

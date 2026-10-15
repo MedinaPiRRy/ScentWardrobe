@@ -5,6 +5,7 @@ import { readFile } from 'fs/promises'
 import { basename, join } from 'path'
 import type { FragranceInput } from '@shared/types'
 import { removeLightBackground, swapRedBlue, trimTransparent } from './imageProcessing'
+import { isAllowedImageUrl } from './security'
 
 const MAX_BYTES = 12 * 1024 * 1024
 const MAX_HEIGHT = 900
@@ -67,7 +68,12 @@ function logImageError(file: string, e: Error): void {
 /** Serves cached images as scentimg://img/<file>. Only plain file names inside the images folder are served. */
 export function registerImageProtocol(): void {
   protocol.handle(SCHEME, (req) => {
-    const file = basename(decodeURIComponent(new URL(req.url).pathname))
+    let file = ''
+    try {
+      file = basename(decodeURIComponent(new URL(req.url).pathname))
+    } catch {
+      return new Response('Bad request', { status: 400 })
+    }
     const full = join(imagesDir(), file)
     if (!file) return new Response('Not found', { status: 404 })
     // Read the file directly, and retry briefly when it is locked (a virus scanner can hold a file open for a moment).
@@ -110,8 +116,15 @@ export async function cacheRemoteImage(url: string, removeBackground = true): Pr
   const name = `${createHash('sha1').update(key).digest('hex').slice(0, 16)}.png`
   if (existsSync(join(imagesDir(), name))) return name
 
-  const res = await net.fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Scent-Wardrobe/0.1', Referer: 'https://www.fragrantica.com/' } })
+  // The address can come from a web page, so only https pictures from Fragrantica's own hosts are fetched.
+  if (!isAllowedImageUrl(url)) throw new Error('That picture is not on a site the app downloads from.')
+  const res = await net.fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Scent-Wardrobe/0.1', Referer: 'https://www.fragrantica.com/' },
+    signal: AbortSignal.timeout(20_000)
+  })
+  if (res.url && !isAllowedImageUrl(res.url)) throw new Error('The picture was redirected to a site the app does not download from.')
   if (!res.ok) throw new Error(`Image download failed (${res.status}).`)
+  if (Number(res.headers.get('content-length') ?? 0) > MAX_BYTES) throw new Error('Image is too large.')
   const bytes = Buffer.from(await res.arrayBuffer())
   if (bytes.length > MAX_BYTES) throw new Error('Image is too large.')
   return save(processImage(bytes, removeBackground).png, key)

@@ -5,6 +5,7 @@
  */
 import type { CommunityData, FragranceInput, NoteLayer } from '@shared/types'
 import { cleanName, normalizeGender, titleCase } from '../data/mapping'
+import { isFragranticaHost } from '../security'
 
 export interface RawVote {
   label: string
@@ -156,7 +157,7 @@ export function averageRating(votes: RawVote[], scale: Record<string, number>): 
 export function isFragranticaUrl(url: string): boolean {
   try {
     const u = new URL(url)
-    return u.protocol === 'https:' && /(^|\.)fragrantica\.[a-z.]+$/i.test(u.hostname) && /\/perfume\//i.test(u.pathname)
+    return u.protocol === 'https:' && !u.username && !u.password && isFragranticaHost(u.hostname) && /\/perfume\//i.test(u.pathname)
   } catch {
     return false
   }
