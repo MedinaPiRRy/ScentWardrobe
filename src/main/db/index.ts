@@ -7,11 +7,16 @@ export type Db = Database.Database
 /** Opens (and migrates) a database. Pass ':memory:' in tests. */
 export function openDatabase(file: string): Db {
   const db = new Database(file)
-  db.pragma('journal_mode = WAL')
-  db.pragma('foreign_keys = ON')
-  runMigrations(db)
-  repairAccordColors(db)
-  return db
+  try {
+    db.pragma('journal_mode = WAL')
+    db.pragma('foreign_keys = ON')
+    runMigrations(db)
+    repairAccordColors(db)
+    return db
+  } catch (e) {
+    db.close() // do not keep a bad file locked
+    throw e
+  }
 }
 
 /** Accords created before they had real colours are still the grey placeholder; give them their proper colour. */

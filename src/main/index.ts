@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, dialog, shell } from 'electron'
 import { mkdirSync } from 'fs'
 import { join } from 'path'
 import { startAutoBackup } from './backup'
@@ -66,7 +66,29 @@ app.whenReady().then(() => {
   for (const sub of ['images', 'backups']) mkdirSync(join(dataDir, sub), { recursive: true })
   const dbPath = join(dataDir, 'scent-wardrobe.db')
   registerImageProtocol()
-  const db = openDatabase(dbPath)
+  let db: ReturnType<typeof openDatabase>
+  try {
+    db = openDatabase(dbPath)
+  } catch (e) {
+    // A damaged, locked or read-only database must not leave an invisible app running: say what happened and quit.
+    const choice = dialog.showMessageBoxSync({
+      type: 'error',
+      title: 'Scent Wardrobe',
+      message: 'Scent Wardrobe could not open its data file.',
+      detail: `${(e as Error).message}
+
+Your data has not been changed. The file is:
+${dbPath}
+
+If it is damaged: close the app, rename that file (for example to scent-wardrobe.damaged.db), start the app again (it creates an empty one) and use Settings > Restore a backup with one of the .zip files in the backups folder.`,
+      buttons: ['Open data folder', 'Quit'],
+      defaultId: 1,
+      cancelId: 1
+    })
+    if (choice === 0) void shell.openPath(dataDir)
+    app.quit()
+    return
+  }
   registerIpc(db, dbPath)
   startAutoBackup(db, { dbPath, imagesDir: join(dataDir, 'images') })
 

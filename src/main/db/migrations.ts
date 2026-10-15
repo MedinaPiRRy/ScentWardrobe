@@ -341,6 +341,11 @@ export function currentVersion(db: Database.Database): number {
 
 export function runMigrations(db: Database.Database, list: Migration[] = migrations): number {
   let version = currentVersion(db)
+  const newest = list.reduce((n, m) => Math.max(n, m.version), 0)
+  if (version > newest) {
+    // Data written by a newer version of the app: opening it here could damage it.
+    throw new Error(`This data file was made by a newer version of Scent Wardrobe (data version ${version}, this app understands up to ${newest}). Install the latest version of the app.`)
+  }
   for (const m of list.filter((x) => x.version > version).sort((a, b) => a.version - b.version)) {
     db.transaction(() => {
       db.exec(m.sql)
