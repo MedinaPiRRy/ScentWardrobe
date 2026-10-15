@@ -174,13 +174,17 @@ export function updateWear(db: Db, id: number, input: WearInput, now = new Date(
   return toResult(() => {
     db.transaction(() => {
       validate(input)
-      const old = db.prepare('SELECT fragrance_id, layer_combo_id FROM wear_log WHERE id = ?').get(id) as { fragrance_id: number | null; layer_combo_id: number | null } | undefined
+      const old = db.prepare('SELECT fragrance_id, layer_combo_id, backfilled, worn_at FROM wear_log WHERE id = ?').get(id) as { fragrance_id: number | null; layer_combo_id: number | null; backfilled: number; worn_at: string } | undefined
       if (!old) throw new AppError('NOT_FOUND', 'Wear not found.')
       if (old.fragrance_id !== (input.fragranceId ?? null) || old.layer_combo_id !== (input.comboId ?? null)) {
         throw new AppError('INVALID', 'You cannot change which fragrance a wear was for. Delete it and log a new one.')
       }
       restore(db, id)
-      const backfilled = isBackfilled(input, now)
+      // Editing keeps what the wear was: a real wear stays real even once its day has passed (otherwise adding a note the
+      // next day would hand its sprays back to the bottle), and a diary entry stays a diary entry. Only moving it to a
+      // different day decides again from the new date.
+      const dayChanged = old.worn_at.slice(0, 10) !== input.wornAt.slice(0, 10)
+      const backfilled = input.backfilled ?? (dayChanged ? isBackfilled(input, now) : old.backfilled === 1)
       const take = input.takeFromBottle ?? !backfilled
       db.prepare(
         `UPDATE wear_log SET bottle_id = ?, worn_at = ?, time_of_day = ?, sprays = ?, activity = ?, temperature_c = ?, humidity = ?, weather = ?,
