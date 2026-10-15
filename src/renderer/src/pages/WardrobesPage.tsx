@@ -1,3 +1,4 @@
+import { hasMod, MOD_LABEL } from '../lib/platform'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { DbInfo, WearEntry, FragranceDetail, FragranceInput, FragranceSummary, HadReason, MoveRequest, PastBottle, Placement, Season, WardrobeKind } from '@shared/types'
@@ -95,7 +96,7 @@ export default function WardrobesPage() {
   // Ctrl+F focuses the search box here; Ctrl+N is handled globally (App) and arrives as /?add=1.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+      if (hasMod(e) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         searchRef.current?.focus()
         searchRef.current?.select()
@@ -285,7 +286,7 @@ export default function WardrobesPage() {
             ref={searchRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, house, accord, note…  (Ctrl+F)"
+            placeholder={`Search name, house, accord, note…  (${MOD_LABEL}F)`}
             className="w-72 rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-cream placeholder:text-cream/35"
           />
           <select value={season} onChange={(e) => setSeason(e.target.value as Season | 'all')} className="rounded-md border border-ink-600 bg-ink-900 px-2 py-2 text-sm" aria-label="Season filter">

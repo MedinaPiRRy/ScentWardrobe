@@ -4,6 +4,7 @@ import CalendarPage from './pages/CalendarPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import FollowUpPrompt from './components/FollowUpPrompt'
 import { applyTheme, storedTheme, type ThemeChoice } from './lib/theme'
+import { hasMod, MOD_LABEL } from './lib/platform'
 import LayeringPage from './pages/LayeringPage'
 import RecommendationsPage from './pages/RecommendationsPage'
 import SettingsPage from './pages/SettingsPage'
@@ -35,10 +36,10 @@ export default function App() {
     return () => undo()
   }, [])
 
-  // Ctrl+N adds a fragrance from anywhere; Ctrl+F searches (the Wardrobes page handles it itself when open).
+  // Ctrl+N (Command+N on a Mac) adds a fragrance from anywhere; Ctrl+F searches (the Wardrobes page handles it itself when open).
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (!e.ctrlKey || e.altKey || e.shiftKey) return
+      if (!hasMod(e) || e.altKey || e.shiftKey) return
       const k = e.key.toLowerCase()
       if (k === 'n') {
         e.preventDefault()
@@ -72,9 +73,9 @@ export default function App() {
           </NavLink>
         ))}
         <div className="mt-auto px-3 text-[11px] leading-relaxed text-cream/35">
-          Ctrl+N add a fragrance
+          {MOD_LABEL}N add a fragrance
           <br />
-          Ctrl+F search
+          {MOD_LABEL}F search
         </div>
       </nav>
       <main className="min-w-0 flex-1 overflow-y-auto">

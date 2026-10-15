@@ -16,7 +16,16 @@ const file = () => join(app.getPath('userData'), 'window-state.json')
 export function loadWindowState(): State {
   try {
     if (!existsSync(file())) return DEFAULT
-    const s = { ...DEFAULT, ...(JSON.parse(readFileSync(file(), 'utf8')) as State) }
+    const raw = JSON.parse(readFileSync(file(), 'utf8')) as Partial<State>
+    const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : undefined)
+    // A hand-edited or damaged file must never stop the window from opening.
+    const s: State = {
+      width: Math.min(Math.max(num(raw.width) ?? DEFAULT.width, 400), 10_000),
+      height: Math.min(Math.max(num(raw.height) ?? DEFAULT.height, 300), 10_000),
+      x: num(raw.x),
+      y: num(raw.y),
+      maximized: raw.maximized === true
+    }
     // Drop the saved position if that display is no longer attached.
     if (s.x !== undefined && s.y !== undefined) {
       const visible = screen.getAllDisplays().some((d) => {
