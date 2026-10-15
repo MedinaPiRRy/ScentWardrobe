@@ -19,7 +19,7 @@ image-errors*.log
 *.zip
 
 # the optional fragrance dataset is downloaded by the user (see INSTRUCTIONS.md)
-data/
+/data/
 
 # secrets and local config
 .env

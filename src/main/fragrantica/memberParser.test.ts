@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildPreview, identityKey, itemFromLink, parseListText, parseMemberRaw, parsePerfumePath, stripHouse, type RawMember } from './memberParser'
 
 const raw: RawMember = {
-  title: 'LatinNatty',
+  title: 'Example User',
   challenge: false,
   hasProfile: true,
   sections: [
