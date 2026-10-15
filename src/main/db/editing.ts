@@ -33,6 +33,14 @@ export function upsertAccord(db: Db, name: string, color: string = accordColor(n
 
 function validate(input: FragranceInput): void {
   if (input.imagePath && !isStoredImageName(input.imagePath)) throw new AppError('INVALID', 'That picture reference is not valid.')
+  // Text can come from a web page or a pasted list, so everything has a sensible size limit.
+  const tooLong = (v: string | null | undefined, max: number) => typeof v === 'string' && v.length > max
+  if (tooLong(input.name, 300) || tooLong(input.house, 300) || tooLong(input.concentration, 100) || tooLong(input.perfumers, 500) || tooLong(input.description, 20_000) || tooLong(input.sourceUrl, 2000)) {
+    throw new AppError('INVALID', 'Some of that text is far too long to be a fragrance. Check the name, house and description.')
+  }
+  if (input.notes.length > 300 || input.accords.length > 100 || input.notes.some((n) => n.name.length > 120) || input.accords.some((a) => a.name.length > 120)) {
+    throw new AppError('INVALID', 'That fragrance has an unreasonable number of notes or accords.')
+  }
   if (!input.name?.trim()) throw new AppError('INVALID', 'A fragrance needs a name.')
   if (!input.house?.trim()) throw new AppError('INVALID', 'A fragrance needs a house.')
   if (input.year != null && (!Number.isInteger(input.year) || input.year < 1700 || input.year > 2100)) {

@@ -47,3 +47,15 @@ describe('editing a wear', () => {
     expect((db.prepare("SELECT remaining_ml AS r FROM bottles WHERE type = 'full bottle'").get() as { r: number }).r).toBe(100)
   })
 })
+
+describe('oversized text from outside', () => {
+  it('rejects absurdly long names and note lists but accepts normal and unusual text', () => {
+    const db = openDatabase(':memory:')
+    const make = (name: string, extra = {}) => createFragrance(db, { name, house: 'H', notes: [], accords: [], ...extra }, { to: 'to_try' })
+    expect(make('x'.repeat(5000)).ok).toBe(false)
+    expect(make('ok', { description: 'y'.repeat(100_000) }).ok).toBe(false)
+    expect(make('ok2', { notes: Array.from({ length: 1000 }, (_, i) => ({ name: `n${i}`, layer: 'top' as const })) }).ok).toBe(false)
+    expect(make('Café "Noir" ✓ 😀 O\'Neil <b>').ok).toBe(true)
+    expect(make('a'.repeat(300)).ok).toBe(true)
+  })
+})
