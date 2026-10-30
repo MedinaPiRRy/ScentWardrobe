@@ -23,8 +23,8 @@ export default function FragranticaProfileDialog({ onClose, onDone }: { onClose:
     return window.api.fragrantica.onMemberProgress(setProgress)
   }, [])
 
-  const fresh = useMemo(() => preview?.items.filter((i) => i.status === 'new') ?? [], [preview])
-  const withUrl = fresh.filter((i) => i.url).length
+  const fresh = useMemo(() => preview?.items.filter((i) => i.status === 'new' || i.status === 'adds') ?? [], [preview])
+  const withUrl = fresh.filter((i) => i.url && i.status === 'new').length
 
   const lookUp = async () => {
     setError(null)
@@ -124,12 +124,12 @@ export default function FragranticaProfileDialog({ onClose, onDone }: { onClose:
           <div className="flex flex-wrap gap-2">
             {ORDER.map((w) => {
               const mine = preview.items.filter((i) => i.target === w)
-              const n = mine.filter((i) => i.status === 'new').length
+              const n = mine.filter((i) => i.status === 'new' || i.status === 'adds').length
               return mine.length === 0 ? null : (
                 <div key={w} className="rounded-lg border border-ink-600 bg-ink-900/60 px-3 py-2">
                   <div className="text-[11px] uppercase tracking-wide text-cream/50">→ {WARDROBE_LABEL[w]}</div>
                   <div className="font-display text-xl text-brass-400">{n} new</div>
-                  <div className="text-xs text-cream/50">{mine.length - n} already here or repeated</div>
+                  <div className="text-xs text-cream/50">{mine.length - n} already here</div>
                 </div>
               )
             })}
@@ -209,7 +209,7 @@ export default function FragranticaProfileDialog({ onClose, onDone }: { onClose:
               </li>
             ))}
             {result.added.length === 0 && <li>Nothing was added.</li>}
-            {result.skipped > 0 && <li>{result.skipped} skipped (already here or repeated)</li>}
+            {result.skipped > 0 && <li>{result.skipped} skipped (already here)</li>}
             {result.withoutDetails > 0 && <li>{result.withoutDetails} added with only a name, because the page could not be read</li>}
           </ul>
           {result.failed.length > 0 && (
@@ -236,14 +236,15 @@ export default function FragranticaProfileDialog({ onClose, onDone }: { onClose:
 }
 
 function Row({ i }: { i: MemberPreviewItem }) {
-  const tag = i.status === 'new' ? 'New' : i.status === 'exists' ? 'Already here' : 'Repeated'
+  const tag = i.status === 'new' ? 'New' : i.status === 'adds' ? 'Adds this wardrobe' : i.status === 'blocked' ? 'In Garbage Perfumes, skipped' : 'Already here'
+  const active = i.status === 'new' || i.status === 'adds'
   return (
-    <div className={`flex items-center justify-between gap-3 border-b border-ink-700 px-3 py-1.5 last:border-0 ${i.status === 'new' ? '' : 'opacity-75'}`}>
+    <div className={`flex items-center justify-between gap-3 border-b border-ink-700 px-3 py-1.5 last:border-0 ${active ? '' : 'opacity-75'}`}>
       <span className="min-w-0 truncate">
         {i.name} <span className="text-cream/45">{i.house}</span>
       </span>
       <span className="shrink-0 text-xs text-cream/60">
-        {WARDROBE_LABEL[i.target]} · <span className={i.status === 'new' ? 'text-brass-400' : ''}>{tag}</span>
+        {WARDROBE_LABEL[i.target]} · <span className={active ? 'text-brass-400' : ''}>{tag}</span>
       </span>
     </div>
   )

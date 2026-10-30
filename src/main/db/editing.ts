@@ -11,7 +11,8 @@ import { accordColor } from '@shared/accordColors'
 import type { Db } from './index'
 import { isStoredImageName } from '../security'
 import { writeRating } from './ratings'
-import { applyMove, AppError, getSummary, toResult, type MoveOptions } from './repo'
+import { AppError, getSummary, toResult } from './repo'
+import { applyMove, type MoveOptions } from './memberships'
 
 const clean = (v: string | null | undefined) => {
   const t = v?.trim()
@@ -178,7 +179,7 @@ export function deleteFragrance(db: Db, id: number): Result<null> {
   return toResult(() => {
     db.transaction(() => {
       // Wardrobe row first, so the wishlist triggers don't block the impression cascade.
-      db.prepare('DELETE FROM wardrobe_items WHERE fragrance_id = ?').run(id)
+      db.prepare('DELETE FROM wardrobe_memberships WHERE fragrance_id = ?').run(id)
       db.prepare('DELETE FROM fragrances WHERE id = ?').run(id)
       pruneBrokenCombos(db)
     })()
@@ -193,7 +194,7 @@ export function setImpression(db: Db, id: number, text: string): Result<null> {
        ON CONFLICT(fragrance_id) DO UPDATE SET text = excluded.text`
     ).run(id, text.trim())
     // Once there is a real note the item is an ordinary wishlist item again, and the wishlist rule applies to it.
-    if (text.trim()) db.prepare('UPDATE wardrobe_items SET imported = 0 WHERE fragrance_id = ?').run(id)
+    if (text.trim()) db.prepare("UPDATE wardrobe_memberships SET imported = 0 WHERE fragrance_id = ? AND wardrobe = 'wishlist'").run(id)
     return null
   })
 }
@@ -209,7 +210,7 @@ export function ownedWithNote(db: Db, noteId: number, excludeId: number): Fragra
   const ids = db
     .prepare(
       `SELECT DISTINCT fn.fragrance_id AS id FROM fragrance_notes fn
-       JOIN wardrobe_items w ON w.fragrance_id = fn.fragrance_id AND w.wardrobe = 'collection'
+       JOIN wardrobe_memberships w ON w.fragrance_id = fn.fragrance_id AND w.wardrobe = 'collection'
        WHERE fn.note_id = ? AND fn.fragrance_id != ?`
     )
     .all(noteId, excludeId) as { id: number }[]

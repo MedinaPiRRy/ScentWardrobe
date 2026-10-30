@@ -25,6 +25,7 @@ const api: Api = {
   },
   wardrobe: {
     move: c('wardrobe:move'),
+    remove: c('wardrobe:remove'),
     setRating: c('wardrobe:setRating'),
     setDetails: c('wardrobe:setDetails'),
     pastBottles: c('wardrobe:pastBottles'),

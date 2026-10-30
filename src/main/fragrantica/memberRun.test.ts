@@ -39,16 +39,41 @@ describe('runMemberImport', () => {
     expect(setImpression(db, id, '').ok).toBe(false)
   })
 
-  it('skips what already exists and does not add the same fragrance twice', async () => {
+  it('skips what is already in that wardrobe, and creates a fragrance in two lists only once, with both wardrobes', async () => {
     const db = openDatabase(':memory:')
     createFragrance(db, { name: 'Homme', house: 'Dior', notes: [], accords: [] }, { to: 'collection', bottle: { type: 'full bottle', sizeMl: 50 } })
     const r = await runMemberImport(db, [item('have', 'Dior', 'Homme'), item('want', 'Byredo', 'Gypsy Water'), item('shelf', 'Byredo', 'Gypsy Water')], { fetchPage: null })
-    expect(r.skipped).toBe(2)
+    expect(r.skipped).toBe(1)
     expect(listFragrances(db)).toHaveLength(2)
+    expect(where(db, 'Gypsy Water').wardrobes).toEqual(['wishlist', 'to_try'])
     // Running it again adds nothing.
-    const again = await runMemberImport(db, [item('have', 'Dior', 'Homme'), item('want', 'Byredo', 'Gypsy Water')], { fetchPage: null })
+    const again = await runMemberImport(db, [item('have', 'Dior', 'Homme'), item('want', 'Byredo', 'Gypsy Water'), item('shelf', 'Byredo', 'Gypsy Water')], { fetchPage: null })
     expect(again.added).toEqual([])
-    expect(again.skipped).toBe(2)
+    expect(again.skipped).toBe(3)
+  })
+
+  it('Have and Want of the same fragrance becomes Collection and Wishlist, Had and Have becomes Had and Collection', async () => {
+    const db = openDatabase(':memory:')
+    const r = await runMemberImport(db, [item('have', 'Dior', 'Sauvage'), item('want', 'Dior', 'Sauvage'), item('had', 'Versace', 'Eros'), item('have', 'Versace', 'Eros')], { fetchPage: null })
+    expect(r.failed).toEqual([])
+    expect(listFragrances(db)).toHaveLength(2)
+    expect(where(db, 'Sauvage')).toMatchObject({ wardrobes: ['collection', 'wishlist'], importedPending: true })
+    expect(where(db, 'Eros').wardrobes).toEqual(['collection', 'had'])
+    expect(Object.fromEntries(r.added.map((a) => [a.wardrobe, a.count]))).toEqual({ collection: 2, wishlist: 1, had: 1 })
+    // the placeholder bottle was made once
+    expect(getFragrance(db, where(db, 'Eros').id)!.bottles).toHaveLength(1)
+  })
+
+  it('adds the extra wardrobe to a fragrance that is already in the app, but never takes anything out of the bin', async () => {
+    const db = openDatabase(':memory:')
+    const mine = createFragrance(db, { name: 'Sauvage', house: 'Dior', notes: [], accords: [] }, { to: 'collection', bottle: { type: 'full bottle', sizeMl: 100 } })
+    const bin = createFragrance(db, { name: 'Kouros', house: 'YSL', notes: [], accords: [] }, { to: 'garbage' })
+    if (!mine.ok || !bin.ok) throw new Error('setup')
+    const r = await runMemberImport(db, [item('want', 'Dior', 'Sauvage'), item('have', 'YSL', 'Kouros')], { fetchPage: null })
+    expect(where(db, 'Sauvage').wardrobes).toEqual(['collection', 'wishlist'])
+    expect(where(db, 'Kouros').wardrobes).toEqual(['garbage'])
+    expect(r.skipped).toBe(1)
+    expect(Object.fromEntries(r.added.map((a) => [a.wardrobe, a.count]))).toEqual({ wishlist: 1 })
   })
 
   it('uses the page details when they can be read, and falls back to the name when not', async () => {

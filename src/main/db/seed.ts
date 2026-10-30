@@ -2,7 +2,7 @@ import type { BottleType, HadDetails, NoteLayer, WardrobeKind } from '@shared/ty
 import type { Db } from './index'
 import { accordColor } from '@shared/accordColors'
 import { pruneBrokenCombos, upsertAccord, upsertNote } from './editing'
-import { moveToWardrobe } from './repo'
+import { moveToWardrobe } from './memberships'
 
 type Notes = Partial<Record<NoteLayer, string[]>>
 
@@ -244,7 +244,7 @@ export function seedSampleData(db: Db): number {
          VALUES (?, (SELECT id FROM bottles WHERE fragrance_id = ? LIMIT 1), datetime('now', ?), 4, ?, ?)`
       )
       for (const [i, daysAgo] of (s.wears ?? []).entries()) wear.run(id, id, `-${daysAgo} days`, 2 + (i % 3), 5 + (i % 4))
-      if (s.rating) db.prepare('UPDATE wardrobe_items SET rating = ? WHERE fragrance_id = ?').run(s.rating, id)
+      if (s.rating) db.prepare('UPDATE fragrances SET rating = ? WHERE id = ?').run(s.rating, id)
       added++
     }
   })()
@@ -256,7 +256,7 @@ export function clearSampleData(db: Db): number {
   let removed = 0
   db.transaction(() => {
     // Wardrobe rows go first so the wishlist-impression triggers don't block the cascade.
-    db.prepare('DELETE FROM wardrobe_items WHERE fragrance_id IN (SELECT id FROM fragrances WHERE is_sample = 1)').run()
+    db.prepare('DELETE FROM wardrobe_memberships WHERE fragrance_id IN (SELECT id FROM fragrances WHERE is_sample = 1)').run()
     removed = db.prepare('DELETE FROM fragrances WHERE is_sample = 1').run().changes
     pruneBrokenCombos(db)
     db.prepare('DELETE FROM notes WHERE id NOT IN (SELECT note_id FROM fragrance_notes)').run()

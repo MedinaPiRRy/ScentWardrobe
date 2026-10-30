@@ -22,7 +22,7 @@ export function recommendCandidates(db: Db, now = new Date()): RecItem[] {
      UNION ALL
      SELECT w.worn_at FROM wear_log w JOIN layer_combo_items ci ON ci.combo_id = w.layer_combo_id WHERE ci.fragrance_id = @id`
   )
-  const rating = db.prepare('SELECT rating FROM wardrobe_items WHERE fragrance_id = ?')
+  const rating = db.prepare('SELECT rating FROM fragrances WHERE id = ?')
   const mine = db.prepare('SELECT avg(longevity_hours) AS h, count(longevity_hours) AS n FROM wear_log WHERE fragrance_id = ?')
   const community = db.prepare('SELECT longevity FROM fragrance_community WHERE fragrance_id = ?')
 

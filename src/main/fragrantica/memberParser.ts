@@ -109,7 +109,7 @@ export function parseMemberRaw(raw: RawMember): { items: MemberItem[]; lists: { 
 }
 
 export const TARGET: Record<MemberList, WardrobeKind> = { have: 'collection', want: 'wishlist', had: 'had', shelf: 'to_try' }
-/** When one fragrance is in several lists, the first of these wins. */
+/** The order lists are handled in when one fragrance is in several of them (the first creates it). */
 const STRENGTH: MemberList[] = ['have', 'had', 'want', 'shelf']
 
 export interface ExistingFragrance {
@@ -117,11 +117,16 @@ export interface ExistingFragrance {
   name: string
   house: string
   sourceUrl: string | null
+  /** The wardrobes it is already in. */
+  wardrobes: WardrobeKind[]
 }
 
 export const identityKey = (house: string, name: string): string => normKey(house) + '|' + normKey(cleanName(name, house).name)
 
-/** Marks each item new, already in the app, or a duplicate of a stronger list. */
+/**
+ * Says what each item would do. A fragrance can be in several wardrobes, so an item whose fragrance is already in the
+ * app (or appears in two lists of the profile, such as Have and Want) adds that wardrobe instead of being skipped.
+ */
 export function previewItems(items: MemberItem[], existing: ExistingFragrance[]): MemberPreviewItem[] {
   const byKey = new Map(existing.map((e) => [identityKey(e.house, e.name), e]))
   const byId = new Map<number, ExistingFragrance>()
@@ -129,22 +134,31 @@ export function previewItems(items: MemberItem[], existing: ExistingFragrance[])
     const m = e.sourceUrl ? /-(\d+)\.html/.exec(e.sourceUrl) : null
     if (m) byId.set(Number(m[1]), e)
   }
-  const best = new Map<string, MemberList>()
-  for (const it of items) {
+  // The first (strongest) list that mentions a fragrance that is not in the app creates it; later lists add to it.
+  const order = [...items.keys()].sort((x, y) => STRENGTH.indexOf(items[x].list) - STRENGTH.indexOf(items[y].list) || x - y)
+  const result = new Array<MemberPreviewItem>(items.length)
+  const created = new Map<string, Set<WardrobeKind>>()
+  for (const i of order) {
+    const it = items[i]
     const k = identityKey(it.house, it.name)
-    const cur = best.get(k)
-    if (!cur || STRENGTH.indexOf(it.list) < STRENGTH.indexOf(cur)) best.set(k, it.list)
-  }
-  const taken = new Set<string>()
-  return items.map((it) => {
-    const k = identityKey(it.house, it.name)
+    const target = TARGET[it.list]
+    const base = { ...it, target }
     const match = (it.fragranticaId != null ? byId.get(it.fragranticaId) : undefined) ?? byKey.get(k)
-    const base = { ...it, target: TARGET[it.list] }
-    if (match) return { ...base, status: 'exists' as const, existingName: `${match.name} · ${match.house}` }
-    if (best.get(k) !== it.list || taken.has(k)) return { ...base, status: 'duplicate' as const }
-    taken.add(k)
-    return { ...base, status: 'new' as const }
-  })
+    if (match) {
+      const label = `${match.name} · ${match.house}`
+      if (match.wardrobes.includes(target)) result[i] = { ...base, status: 'exists', existingName: label }
+      else if (match.wardrobes.includes('garbage')) result[i] = { ...base, status: 'blocked', existingName: label }
+      else result[i] = { ...base, status: 'adds', existingName: label }
+    } else if (created.has(k)) {
+      const have = created.get(k)!
+      result[i] = have.has(target) ? { ...base, status: 'exists' } : { ...base, status: 'adds', existingName: `${it.name} · ${it.house}` }
+      have.add(target)
+    } else {
+      created.set(k, new Set([target]))
+      result[i] = { ...base, status: 'new' }
+    }
+  }
+  return result
 }
 
 export function buildPreview(username: string, raw: RawMember, existing: ExistingFragrance[]): MemberPreview {

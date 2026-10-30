@@ -1,3 +1,4 @@
+import type { WardrobeKind } from '@shared/types'
 import { describe, expect, it } from 'vitest'
 import { buildPreview, identityKey, itemFromLink, parseListText, parseMemberRaw, parsePerfumePath, stripHouse, type RawMember } from './memberParser'
 
@@ -54,8 +55,8 @@ describe('parseMemberRaw', () => {
 
 describe('buildPreview', () => {
   const existing = [
-    { id: 1, name: 'Eros', house: 'Versace', sourceUrl: null },
-    { id: 2, name: 'Something', house: 'Else', sourceUrl: 'https://www.fragrantica.com/perfume/Lattafa-Perfumes/Vintage-Radio-89454.html' }
+    { id: 1, name: 'Eros', house: 'Versace', sourceUrl: null, wardrobes: ['had'] as WardrobeKind[] },
+    { id: 2, name: 'Something', house: 'Else', sourceUrl: 'https://www.fragrantica.com/perfume/Lattafa-Perfumes/Vintage-Radio-89454.html', wardrobes: ['wishlist'] as WardrobeKind[] }
   ]
   const p = buildPreview('example_user', raw, existing)
   const by = (name: string, list: string) => p.items.find((i) => i.name.startsWith(name) && i.list === list)!
@@ -69,9 +70,20 @@ describe('buildPreview', () => {
     expect(by('The Blazing', 'want')).toMatchObject({ status: 'new', target: 'wishlist' })
     expect(by('Liquid', 'shelf')).toMatchObject({ status: 'new', target: 'to_try' })
   })
-  it('keeps only the strongest list when a fragrance is in two', () => {
+  it('a fragrance in two lists is created once and gets both wardrobes', () => {
     expect(by('Nava Sol', 'have').status).toBe('new')
-    expect(by('Nava Sol', 'want').status).toBe('duplicate')
+    expect(by('Nava Sol', 'want')).toMatchObject({ status: 'adds', target: 'wishlist' })
+  })
+  it('a fragrance already in the app gets the extra wardrobe, is skipped when it already has it, and never leaves the bin', () => {
+    const ex = [
+      { id: 1, name: 'Vendetta Uomo (2026)', house: 'Valentino', sourceUrl: null, wardrobes: ['wishlist'] as WardrobeKind[] },
+      { id: 2, name: 'Eros', house: 'Versace', sourceUrl: null, wardrobes: ['garbage'] as WardrobeKind[] }
+    ]
+    const p = buildPreview('x', { ...raw, sections: [...raw.sections.slice(0, 1), raw.sections[2]] }, ex)
+    const find = (name: string) => p.items.find((i) => i.name.startsWith(name))!
+    expect(find('Vendetta')).toMatchObject({ status: 'adds', target: 'collection' }) // in Wishlist already, now also Have
+    expect(find('Eros')).toMatchObject({ status: 'blocked', target: 'had' }) // disliked: Garbage is exclusive
+    expect(buildPreview('x', raw, [{ ...ex[0], wardrobes: ['collection'] as WardrobeKind[] }]).items.find((i) => i.name.startsWith('Vendetta'))!.status).toBe('exists')
   })
   it('warns when a list could not be read completely', () => {
     const short = buildPreview('x', { ...raw, sections: [{ heading: 'Perfumes I Want 43', links: raw.sections[1].links }] }, [])

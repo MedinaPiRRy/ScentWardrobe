@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { openDatabase } from './index'
 import { currentVersion, migrations } from './migrations'
-import { getFragrance, listFragrances, moveToWardrobe } from './repo'
+import { getFragrance, listFragrances } from './repo'
+import { moveToWardrobe } from './memberships'
 import { clearSampleData, SAMPLE_FRAGRANCES, seedSampleData } from './seed'
 
 const fresh = () => openDatabase(':memory:')
@@ -70,7 +71,7 @@ describe('wishlist rule', () => {
 
   it('is enforced by the database too', () => {
     const { db, toTry } = setup()
-    expect(() => db.prepare("UPDATE wardrobe_items SET wardrobe='wishlist' WHERE fragrance_id=?").run(toTry.id)).toThrow(
+    expect(() => db.prepare("UPDATE wardrobe_memberships SET wardrobe='wishlist' WHERE fragrance_id=?").run(toTry.id)).toThrow(
       /WISHLIST_IMPRESSION_REQUIRED/
     )
   })

@@ -5,7 +5,7 @@ import { arrayMove, bottleHeightPx, filterFragrances, fillLevel, isRackItem, she
 const make = (o: Partial<FragranceSummary>): FragranceSummary => ({
   id: 1, name: 'A', house: 'H', year: null, concentration: null, imagePath: null, wardrobe: 'collection',
   shelfPosition: 0, rating: null, topAccords: [], activeBottleCount: 0, bottles: [], desiredSizeMl: null,
-  wearCount: 0, lastWornAt: null, seasons: [], accordNames: [], noteNames: [], isSample: false, dislikeNote: null, hadYears: null, hadMemory: null, hadReason: null, importedPending: false, defaultSprays: null, isForeign: false, ...o
+  wearCount: 0, lastWornAt: null, seasons: [], accordNames: [], noteNames: [], isSample: false, dislikeNote: null, hadYears: null, hadMemory: null, hadReason: null, importedPending: false, defaultSprays: null, isForeign: false, wardrobes: ['collection'], memberships: [], ...o
 })
 
 describe('bottle sizing', () => {

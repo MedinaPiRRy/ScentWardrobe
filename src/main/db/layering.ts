@@ -10,7 +10,7 @@ const MIN_RATED_WEARS = 2
 export function layerCandidates(db: Db): LayerItem[] {
   const frags = db
     .prepare(
-      `SELECT f.id, f.name, f.house, w.rating FROM fragrances f JOIN wardrobe_items w ON w.fragrance_id = f.id AND w.wardrobe = 'collection'
+      `SELECT f.id, f.name, f.house, f.rating FROM fragrances f JOIN wardrobe_memberships w ON w.fragrance_id = f.id AND w.wardrobe = 'collection'
        ORDER BY f.house, f.name`
     )
     .all() as { id: number; name: string; house: string; rating: number | null }[]

@@ -5,6 +5,7 @@ import { join } from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { applyRestore, AUTO_KEEP, autoBackupDue, autoBackupsToPrune, BackupError, createBackup, dateStamp, discardRestore, listBackupFiles, prepareRestore, timeStamp, type BackupFile } from './backupCore'
 import { openDatabase } from './db'
+import { migrations, runMigrations } from './db/migrations'
 import { createFragrance } from './db/editing'
 import { buildCollectionCsv, csvField, toCsv } from './db/exportCsv'
 import { logWear } from './db/wears'
@@ -108,9 +109,12 @@ describe('backup and restore', () => {
     const zip = (await createBackup(a.db, a.paths, join(a.root, 'x.zip'))).path
     // rewrite the zip's db as if made by an old version: drop to schema 1 tables only is complex, so just downgrade the stamp
     const prepared = await prepareRestore(zip)
+    // Replace the extracted database with a genuine schema-2 one (what an old version of the app would have written).
+    rmSync(prepared.dbFile, { force: true })
     const old = new Database(prepared.dbFile)
-    old.exec('DROP TABLE past_bottles; DROP TABLE wear_deductions; DROP INDEX ix_catalog_source_url; DROP INDEX ix_wear_log_day; ALTER TABLE fragrances DROP COLUMN default_sprays; ALTER TABLE wear_log DROP COLUMN backfilled; ALTER TABLE bottles DROP COLUMN market_price; ALTER TABLE bottles DROP COLUMN market_checked_on; ALTER TABLE bottles DROP COLUMN market_source; ALTER TABLE fragrances DROP COLUMN is_foreign; DROP TABLE rating_history; ALTER TABLE catalog_fragrances DROP COLUMN source_url; ALTER TABLE catalog_fragrances DROP COLUMN popularity; ALTER TABLE wear_log DROP COLUMN followup_dismissed;')
-    old.pragma('user_version = 2')
+    runMigrations(old, migrations.filter((m) => m.version <= 2))
+    old.prepare("INSERT INTO fragrances (name, house) VALUES ('Old', 'H')").run()
+    old.prepare("INSERT INTO wardrobe_items (fragrance_id, wardrobe, rating) VALUES (1, 'collection', 7)").run()
     old.close()
     a.db.close()
     applyRestore(prepared, a.paths)
@@ -118,6 +122,7 @@ describe('backup and restore', () => {
     open.push(restored)
     expect(restored.pragma('user_version', { simple: true })).toBeGreaterThanOrEqual(5)
     expect(() => restored.prepare('SELECT * FROM wear_deductions').all()).not.toThrow()
+    expect(restored.prepare('SELECT f.name, f.rating, m.wardrobe FROM fragrances f JOIN wardrobe_memberships m ON m.fragrance_id = f.id').all()).toEqual([{ name: 'Old', rating: 7, wardrobe: 'collection' }])
     restored.close()
   })
 
@@ -275,7 +280,7 @@ describe('CSV export', () => {
     const all = buildCollectionCsv(db, 'all')
     expect(all.rows).toBe(2)
     const lines = all.csv.split('\r\n')
-    expect(lines[0]).toMatch(/^Wardrobe,Name,House,/)
+    expect(lines[0]).toMatch(/^Wardrobes,Name,House,/)
     expect(all.csv).toContain('"Alpha, the ""First"""')
     expect(all.csv).toContain('"Dry cedar,\nsmoky"')
     expect(all.csv).toContain('Cedar') // base notes column

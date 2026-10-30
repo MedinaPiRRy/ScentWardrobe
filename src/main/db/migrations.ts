@@ -350,6 +350,84 @@ CREATE INDEX ix_rating_history_fragrance ON rating_history (fragrance_id, rated_
 INSERT INTO rating_history (fragrance_id, rating, rated_at, source)
   SELECT fragrance_id, rating, datetime('now', 'localtime'), 'earlier' FROM wardrobe_items WHERE rating IS NOT NULL;
 `
+  },
+  {
+    version: 10,
+    name: 'a fragrance in several wardrobes',
+    sql: `
+-- One row per fragrance AND wardrobe. Everything about being on one shelf lives here; everything about the fragrance
+-- itself (bottles, wears, notes, rating) stays on the fragrance. See docs/MEMBERSHIPS.md.
+CREATE TABLE wardrobe_memberships (
+  fragrance_id INTEGER NOT NULL REFERENCES fragrances(id) ON DELETE CASCADE,
+  wardrobe TEXT NOT NULL CHECK (wardrobe IN ('collection','wishlist','to_try','garbage','had')),
+  shelf_position INTEGER NOT NULL DEFAULT 0,
+  added_at TEXT NOT NULL DEFAULT (datetime('now')),
+  desired_size_ml REAL,
+  -- 1 for a wishlist membership brought in by an importer, which cannot have a smell note yet.
+  imported INTEGER NOT NULL DEFAULT 0 CHECK (imported IN (0, 1)),
+  -- Garbage Perfumes: why I dislike it.
+  dislike_note TEXT,
+  -- Had: years I wore it, a memory, and why it left.
+  had_years TEXT,
+  had_memory TEXT,
+  had_reason TEXT CHECK (had_reason IN ('finished','sold','gifted')),
+  PRIMARY KEY (fragrance_id, wardrobe)
+);
+CREATE INDEX ix_memberships_wardrobe ON wardrobe_memberships (wardrobe, shelf_position);
+
+-- The notes of a wardrobe I have left (why I disliked it, my Had memories), kept so they come back if I return.
+CREATE TABLE membership_memory (
+  fragrance_id INTEGER NOT NULL REFERENCES fragrances(id) ON DELETE CASCADE,
+  wardrobe TEXT NOT NULL CHECK (wardrobe IN ('garbage','had')),
+  dislike_note TEXT,
+  had_years TEXT,
+  had_memory TEXT,
+  had_reason TEXT CHECK (had_reason IN ('finished','sold','gifted')),
+  PRIMARY KEY (fragrance_id, wardrobe)
+);
+
+-- One rating overall, whichever wardrobes the fragrance is in.
+ALTER TABLE fragrances ADD COLUMN rating INTEGER CHECK (rating IS NULL OR rating BETWEEN 1 AND 10);
+UPDATE fragrances SET rating = (SELECT w.rating FROM wardrobe_items w WHERE w.fragrance_id = fragrances.id);
+
+-- The wishlist rules move with the data.
+DROP TRIGGER wishlist_needs_impression_insert;
+DROP TRIGGER wishlist_needs_impression_update;
+DROP TRIGGER impression_cannot_be_blanked;
+DROP TRIGGER impression_cannot_be_deleted;
+
+INSERT INTO wardrobe_memberships (fragrance_id, wardrobe, shelf_position, added_at, desired_size_ml, imported, dislike_note, had_years, had_memory, had_reason)
+  SELECT fragrance_id, wardrobe, shelf_position, added_at, desired_size_ml, imported, dislike_note, had_years, had_memory, had_reason FROM wardrobe_items;
+DROP TABLE wardrobe_items;
+
+CREATE TRIGGER wishlist_needs_impression_insert
+BEFORE INSERT ON wardrobe_memberships
+WHEN NEW.wardrobe = 'wishlist' AND NEW.imported = 0 AND NOT EXISTS (
+  SELECT 1 FROM smell_impression WHERE fragrance_id = NEW.fragrance_id AND length(trim(text)) > 0
+)
+BEGIN SELECT RAISE(ABORT, 'WISHLIST_IMPRESSION_REQUIRED'); END;
+
+CREATE TRIGGER wishlist_needs_impression_update
+BEFORE UPDATE OF wardrobe, imported ON wardrobe_memberships
+WHEN NEW.wardrobe = 'wishlist' AND NEW.imported = 0 AND NOT EXISTS (
+  SELECT 1 FROM smell_impression WHERE fragrance_id = NEW.fragrance_id AND length(trim(text)) > 0
+)
+BEGIN SELECT RAISE(ABORT, 'WISHLIST_IMPRESSION_REQUIRED'); END;
+
+CREATE TRIGGER impression_cannot_be_blanked
+BEFORE UPDATE OF text ON smell_impression
+WHEN length(trim(NEW.text)) = 0 AND EXISTS (
+  SELECT 1 FROM wardrobe_memberships WHERE fragrance_id = NEW.fragrance_id AND wardrobe = 'wishlist' AND imported = 0
+)
+BEGIN SELECT RAISE(ABORT, 'WISHLIST_IMPRESSION_REQUIRED'); END;
+
+CREATE TRIGGER impression_cannot_be_deleted
+BEFORE DELETE ON smell_impression
+WHEN EXISTS (
+  SELECT 1 FROM wardrobe_memberships WHERE fragrance_id = OLD.fragrance_id AND wardrobe = 'wishlist' AND imported = 0
+)
+BEGIN SELECT RAISE(ABORT, 'WISHLIST_IMPRESSION_REQUIRED'); END;
+`
   }
 ]
 

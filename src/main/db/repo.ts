@@ -1,4 +1,5 @@
 import { listRatingHistory } from './ratings'
+import { WARDROBE_ORDER } from '@shared/wardrobes'
 import type {
   AccordStrength,
   Bottle,
@@ -12,7 +13,7 @@ import type {
   PastBottle,
   Season,
   ShelfBottle,
-  MoveRequest,
+  Membership,
   NoteEntry,
   PerformanceStats,
   Result,
@@ -56,15 +57,7 @@ interface SummaryRow {
   concentration: string | null
   image_path: string | null
   is_sample: number
-  wardrobe: WardrobeKind | null
-  shelf_position: number | null
   rating: number | null
-  desired_size_ml: number | null
-  imported: number | null
-  dislike_note: string | null
-  had_years: string | null
-  had_memory: string | null
-  had_reason: HadReason | null
   has_impression: number
   default_sprays: number | null
   is_foreign: number
@@ -73,13 +66,42 @@ interface SummaryRow {
 }
 
 const SUMMARY_SQL = `
-SELECT f.id, f.name, f.house, f.year, f.concentration, f.image_path, f.is_sample, f.default_sprays, f.is_foreign,
-       w.wardrobe, w.shelf_position, w.rating, w.desired_size_ml, w.imported, w.dislike_note, w.had_years, w.had_memory, w.had_reason,
+SELECT f.id, f.name, f.house, f.year, f.concentration, f.image_path, f.is_sample, f.default_sprays, f.is_foreign, f.rating,
        EXISTS (SELECT 1 FROM smell_impression s WHERE s.fragrance_id = f.id AND length(trim(s.text)) > 0) AS has_impression,
        (SELECT count(*) FROM wear_log l WHERE l.fragrance_id = f.id) AS wear_count,
        (SELECT max(l.worn_at) FROM wear_log l WHERE l.fragrance_id = f.id) AS last_worn
-FROM fragrances f
-LEFT JOIN wardrobe_items w ON w.fragrance_id = f.id`
+FROM fragrances f`
+
+interface MembershipRow {
+  wardrobe: WardrobeKind
+  shelf_position: number
+  imported: number
+  dislike_note: string | null
+  had_years: string | null
+  had_memory: string | null
+  had_reason: HadReason | null
+  desired_size_ml: number | null
+  added_at: string
+}
+
+export function membershipsOf(db: Db, fragranceId: number, hasImpression: boolean): Membership[] {
+  const rows = db
+    .prepare('SELECT wardrobe, shelf_position, imported, dislike_note, had_years, had_memory, had_reason, desired_size_ml, added_at FROM wardrobe_memberships WHERE fragrance_id = ?')
+    .all(fragranceId) as MembershipRow[]
+  return rows
+    .map((r) => ({
+      wardrobe: r.wardrobe,
+      shelfPosition: r.shelf_position,
+      importedPending: r.wardrobe === 'wishlist' && r.imported === 1 && !hasImpression,
+      dislikeNote: r.dislike_note,
+      hadYears: r.had_years,
+      hadMemory: r.had_memory,
+      hadReason: r.had_reason,
+      desiredSizeMl: r.desired_size_ml,
+      addedAt: r.added_at
+    }))
+    .sort((x, y) => WARDROBE_ORDER.indexOf(x.wardrobe) - WARDROBE_ORDER.indexOf(y.wardrobe))
+}
 
 function accordsFor(db: Db, fragranceId: number): AccordStrength[] {
   return db
@@ -104,6 +126,8 @@ function seasonsFor(db: Db, id: number): Season[] {
 }
 
 function toSummary(db: Db, r: SummaryRow): FragranceSummary {
+  const memberships = membershipsOf(db, r.id, r.has_impression === 1)
+  const main = memberships[0]
   const accords = accordsFor(db, r.id)
   const bottles = db
     .prepare(
@@ -123,24 +147,26 @@ function toSummary(db: Db, r: SummaryRow): FragranceSummary {
     year: r.year,
     concentration: r.concentration,
     imagePath: r.image_path,
-    wardrobe: r.wardrobe,
-    shelfPosition: r.shelf_position,
+    wardrobe: main?.wardrobe ?? null,
+    wardrobes: memberships.map((m) => m.wardrobe),
+    memberships,
+    shelfPosition: main?.shelfPosition ?? null,
     rating: r.rating,
     topAccords: accords.slice(0, 3),
     accordNames: accords.map((a) => a.name),
     noteNames,
     bottles,
     activeBottleCount: bottles.length,
-    desiredSizeMl: r.desired_size_ml,
+    desiredSizeMl: main?.desiredSizeMl ?? null,
     wearCount: r.wear_count,
     lastWornAt: r.last_worn,
     seasons: seasonsFor(db, r.id),
     isSample: r.is_sample === 1,
-    dislikeNote: r.dislike_note,
-    hadYears: r.had_years,
-    hadMemory: r.had_memory,
-    hadReason: r.had_reason,
-    importedPending: r.wardrobe === 'wishlist' && r.imported === 1 && r.has_impression === 0,
+    dislikeNote: main?.dislikeNote ?? null,
+    hadYears: main?.hadYears ?? null,
+    hadMemory: main?.hadMemory ?? null,
+    hadReason: main?.hadReason ?? null,
+    importedPending: memberships.some((m) => m.importedPending),
     defaultSprays: r.default_sprays,
     isForeign: r.is_foreign === 1
   }
@@ -150,7 +176,7 @@ export function listFragrances(db: Db, filter: { wardrobe?: WardrobeKind } = {})
   const rows = (
     filter.wardrobe
       ? db
-          .prepare(`${SUMMARY_SQL} WHERE w.wardrobe = ? ORDER BY w.shelf_position, f.house, f.name`)
+          .prepare(`${SUMMARY_SQL} JOIN wardrobe_memberships w ON w.fragrance_id = f.id AND w.wardrobe = ? ORDER BY w.shelf_position, f.house, f.name`)
           .all(filter.wardrobe)
       : db.prepare(`${SUMMARY_SQL} ORDER BY f.house, f.name`).all()
   ) as SummaryRow[]
@@ -273,131 +299,6 @@ export function getFragrance(db: Db, id: number): FragranceDetail | null {
   }
 }
 
-/**
- * Puts a fragrance in a wardrobe (inserting or moving). History (wears, notes, bottles) is untouched
- * because it hangs off the fragrance, not the wardrobe row.
- */
-export function moveToWardrobe(db: Db, req: MoveRequest): Result<FragranceSummary> {
-  return toResult(() => applyMove(db, req))
-}
-
-export interface MoveOptions {
-  /**
-   * Importers only: allows a wishlist item without a smell note and marks it, so it shows as "needs a note".
-   * The renderer cannot set this (the IPC handler never passes it), so the wishlist rule still holds for everything
-   * added by hand.
-   */
-  imported?: boolean
-}
-
-const clean = (v: string | null | undefined) => {
-  const t = v?.trim()
-  return t ? t : null
-}
-
-/** Moving an item out of Had into the collection turns its Had details into a "previous bottle" record. */
-function archiveHadDetails(db: Db, fragranceId: number): void {
-  const w = db.prepare('SELECT had_years, had_memory, had_reason FROM wardrobe_items WHERE fragrance_id = ?').get(fragranceId) as
-    | { had_years: string | null; had_memory: string | null; had_reason: HadReason | null }
-    | undefined
-  if (w && (w.had_years || w.had_memory || w.had_reason)) {
-    db.prepare('INSERT INTO past_bottles (fragrance_id, years, memory, reason) VALUES (?, ?, ?, ?)').run(fragranceId, w.had_years, w.had_memory, w.had_reason)
-    db.prepare('UPDATE wardrobe_items SET had_years = NULL, had_memory = NULL, had_reason = NULL WHERE fragrance_id = ?').run(fragranceId)
-  }
-}
-
-/** Throwing variant of moveToWardrobe, for use inside larger transactions. */
-export function applyMove(db: Db, req: MoveRequest, opts: MoveOptions = {}): FragranceSummary {
-  const exists = db.prepare('SELECT 1 FROM fragrances WHERE id = ?').get(req.fragranceId)
-  if (!exists) throw new AppError('NOT_FOUND', 'Fragrance not found.')
-  const before = db.prepare('SELECT wardrobe FROM wardrobe_items WHERE fragrance_id = ?').get(req.fragranceId) as { wardrobe: WardrobeKind } | undefined
-
-  db.transaction(() => {
-    let imported = 0
-    if (req.to === 'wishlist') {
-      const text = req.impression?.trim()
-      if (text) {
-        db.prepare(
-          `INSERT INTO smell_impression (fragrance_id, text) VALUES (?, ?)
-           ON CONFLICT(fragrance_id) DO UPDATE SET text = excluded.text`
-        ).run(req.fragranceId, text)
-      }
-      const has = db
-        .prepare('SELECT 1 FROM smell_impression WHERE fragrance_id = ? AND length(trim(text)) > 0')
-        .get(req.fragranceId)
-      if (!has) {
-        if (!opts.imported) throw new AppError('WISHLIST_IMPRESSION_REQUIRED', IMPRESSION_MESSAGE)
-        imported = 1
-      }
-    }
-
-    if (req.to === 'collection') {
-      const active = db
-        .prepare(`SELECT 1 FROM bottles WHERE fragrance_id = ? AND status = 'active'`)
-        .get(req.fragranceId)
-      if (!active) {
-        const b = req.bottle
-        if (!b) throw new AppError('BOTTLE_REQUIRED', 'Choose a bottle type and size to add this to your collection.')
-        if (!(b.sizeMl > 0)) throw new AppError('INVALID', 'Bottle size must be greater than 0 ml.')
-        const remaining = Math.min(Math.max(b.remainingMl ?? b.sizeMl, 0), b.sizeMl)
-        if (b.price != null && !(Number.isFinite(b.price) && b.price >= 0)) throw new AppError('INVALID', 'The price must be 0 or more.')
-        db.prepare(
-          'INSERT INTO bottles (fragrance_id, type, size_ml, remaining_ml, price, bought_at, purchase_date) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).run(req.fragranceId, b.type, b.sizeMl, remaining, b.price ?? null, clean(b.boughtAt), clean(b.purchaseDate))
-      }
-      if (before?.wardrobe === 'had') archiveHadDetails(db, req.fragranceId)
-    }
-
-    db.prepare('UPDATE fragrances SET is_foreign = 0 WHERE id = ?').run(req.fragranceId)
-
-    const position =
-      (db.prepare('SELECT coalesce(max(shelf_position), -1) + 1 AS p FROM wardrobe_items WHERE wardrobe = ?').get(
-        req.to
-      ) as { p: number }).p
-
-    db.prepare(
-      `INSERT INTO wardrobe_items (fragrance_id, wardrobe, shelf_position, desired_size_ml, imported)
-       VALUES (@id, @to, @pos, @desired, @imported)
-       ON CONFLICT(fragrance_id) DO UPDATE SET
-         wardrobe = excluded.wardrobe,
-         shelf_position = CASE WHEN wardrobe_items.wardrobe = excluded.wardrobe
-                               THEN wardrobe_items.shelf_position ELSE excluded.shelf_position END,
-         desired_size_ml = CASE WHEN excluded.wardrobe = 'wishlist'
-                                THEN coalesce(excluded.desired_size_ml, wardrobe_items.desired_size_ml)
-                                ELSE wardrobe_items.desired_size_ml END,
-         imported = excluded.imported`
-    ).run({ id: req.fragranceId, to: req.to, pos: position, desired: req.desiredSizeMl ?? null, imported })
-
-    // Wardrobe-specific notes. They are kept when something moves away, so history survives a round trip.
-    if (req.to === 'garbage' && req.dislikeNote !== undefined) {
-      db.prepare('UPDATE wardrobe_items SET dislike_note = ? WHERE fragrance_id = ?').run(clean(req.dislikeNote), req.fragranceId)
-    }
-    if (req.to === 'had' && req.had) {
-      db.prepare('UPDATE wardrobe_items SET had_years = ?, had_memory = ?, had_reason = ? WHERE fragrance_id = ?').run(
-        clean(req.had.years), clean(req.had.memory), req.had.reason ?? null, req.fragranceId
-      )
-    }
-  })()
-
-  return getSummary(db, req.fragranceId)!
-}
-
-/** Edits the notes that belong to a wardrobe: why I dislike it (Garbage) or the Had details. */
-export function setWardrobeDetails(db: Db, fragranceId: number, d: { dislikeNote?: string | null; had?: { years?: string | null; memory?: string | null; reason?: HadReason | null } }): Result<null> {
-  return toResult(() => {
-    const row = db.prepare('SELECT 1 FROM wardrobe_items WHERE fragrance_id = ?').get(fragranceId)
-    if (!row) throw new AppError('NOT_FOUND', 'That fragrance is not in a wardrobe.')
-    if (d.dislikeNote !== undefined) db.prepare('UPDATE wardrobe_items SET dislike_note = ? WHERE fragrance_id = ?').run(clean(d.dislikeNote), fragranceId)
-    if (d.had) {
-      if (d.had.reason && !['finished', 'sold', 'gifted'].includes(d.had.reason)) throw new AppError('INVALID', 'Choose finished, sold or gifted.')
-      db.prepare('UPDATE wardrobe_items SET had_years = ?, had_memory = ?, had_reason = ? WHERE fragrance_id = ?').run(
-        clean(d.had.years), clean(d.had.memory), d.had.reason ?? null, fragranceId
-      )
-    }
-    return null
-  })
-}
-
 export function listPastBottles(db: Db, fragranceId?: number): PastBottle[] {
   const sql = `SELECT id, fragrance_id AS fragranceId, years, memory, reason, created_at AS createdAt FROM past_bottles ${fragranceId != null ? 'WHERE fragrance_id = ?' : ''} ORDER BY id`
   return (fragranceId != null ? db.prepare(sql).all(fragranceId) : db.prepare(sql).all()) as PastBottle[]
@@ -411,12 +312,4 @@ export function dbInfo(db: Db, path: string): DbInfo {
     fragranceCount: count('SELECT count(*) AS c FROM fragrances'),
     sampleCount: count('SELECT count(*) AS c FROM fragrances WHERE is_sample = 1')
   }
-}
-
-export function reorderWardrobe(db: Db, wardrobe: WardrobeKind, orderedIds: number[]): Result<null> {
-  return toResult(() => {
-    const upd = db.prepare('UPDATE wardrobe_items SET shelf_position = ? WHERE fragrance_id = ? AND wardrobe = ?')
-    db.transaction(() => orderedIds.forEach((id, i) => upd.run(i, id, wardrobe)))()
-    return null
-  })
 }

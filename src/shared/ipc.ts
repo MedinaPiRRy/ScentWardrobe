@@ -78,7 +78,10 @@ export interface Api {
     ownedWithNote(noteId: number, excludeId: number): Promise<FragranceSummary[]>
   }
   wardrobe: {
+    /** Adds a wardrobe next to the ones a fragrance is in, or (with `from`) moves it from one to another. */
     move(req: MoveRequest): Promise<Result<FragranceSummary>>
+    /** Takes a fragrance out of one wardrobe (never the last one). Its bottles, wears and notes stay. */
+    remove(fragranceId: number, wardrobe: WardrobeKind): Promise<Result<FragranceSummary>>
     /** Persists a manual shelf order for one wardrobe. */
     setRating(fragranceId: number, rating: number | null, source?: RatingSource): Promise<Result<null>>
     /** Edits the wardrobe-specific notes: why I dislike it (Garbage) or the Had details. */

@@ -12,10 +12,10 @@ const DISMISS_KEY = 'rating.dismissed'
  */
 export function writeRating(db: Db, fragranceId: number, rating: number | null, source: RatingSource = 'detail'): void {
   if (rating != null && !(Number.isInteger(rating) && rating >= 1 && rating <= 10)) throw new AppError('INVALID', 'Rating must be a whole number from 1 to 10.')
-  const cur = db.prepare('SELECT rating FROM wardrobe_items WHERE fragrance_id = ?').get(fragranceId) as { rating: number | null } | undefined
-  if (!cur) throw new AppError('NOT_FOUND', 'Add the fragrance to a wardrobe before rating it.')
+  const cur = db.prepare('SELECT rating, (SELECT count(*) FROM wardrobe_memberships m WHERE m.fragrance_id = fragrances.id) AS memberships FROM fragrances WHERE id = ?').get(fragranceId) as { rating: number | null; memberships: number } | undefined
+  if (!cur || cur.memberships === 0) throw new AppError('NOT_FOUND', 'Add the fragrance to a wardrobe before rating it.')
   if (cur.rating === rating) return
-  db.prepare('UPDATE wardrobe_items SET rating = ? WHERE fragrance_id = ?').run(rating, fragranceId)
+  db.prepare('UPDATE fragrances SET rating = ? WHERE id = ?').run(rating, fragranceId)
   db.prepare('INSERT INTO rating_history (fragrance_id, rating, source) VALUES (?, ?, ?)').run(fragranceId, rating, source)
 }
 
@@ -46,12 +46,12 @@ const daysBetween = (from: string, now: Date) => Math.max(Math.round((now.getTim
 export function ratingFacts(db: Db, now = new Date()): RatingFacts[] {
   const rows = db
     .prepare(
-      `SELECT f.id, f.name, f.house, w.rating, w.added_at AS addedAt,
+      `SELECT f.id, f.name, f.house, f.rating, w.added_at AS addedAt,
               (SELECT max(rated_at) FROM rating_history h WHERE h.fragrance_id = f.id) AS lastRatedAt,
               (SELECT count(*) FROM wear_log l WHERE l.fragrance_id = f.id AND substr(l.worn_at, 1, 10) >= ?) AS wears90,
               (SELECT count(*) FROM wear_log l WHERE l.fragrance_id = f.id) AS wearsTotal,
               (SELECT max(substr(l.worn_at, 1, 10)) FROM wear_log l WHERE l.fragrance_id = f.id) AS lastWorn
-       FROM fragrances f JOIN wardrobe_items w ON w.fragrance_id = f.id AND w.wardrobe = 'collection'`
+       FROM fragrances f JOIN wardrobe_memberships w ON w.fragrance_id = f.id AND w.wardrobe = 'collection'`
     )
     .all(new Date(now.getTime() - 90 * 86_400_000).toISOString().slice(0, 10)) as { id: number; name: string; house: string; rating: number | null; addedAt: string; lastRatedAt: string | null; wears90: number; wearsTotal: number; lastWorn: string | null }[]
   return rows.map((r) => ({

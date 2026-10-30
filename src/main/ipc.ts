@@ -41,7 +41,8 @@ import { deleteCombo, layerCandidates, listCombos, ratedHistory, rateCombo, save
 import { addActivity, getSetting, listActivities, setSetting } from './db/settings'
 import { computeOverview } from './db/stats'
 import { completeFollowUp, deleteWear, dismissFollowUp, listWears, listWearsRange, logWear, pendingFollowUps, updateWear } from './db/wears'
-import { AppError, dbInfo, fail, getFragrance, listFragrances, listPastBottles, moveToWardrobe, reorderWardrobe, setWardrobeDetails, toResult } from './db/repo'
+import { AppError, dbInfo, fail, getFragrance, listFragrances, listPastBottles, toResult } from './db/repo'
+import { moveToWardrobe, removeFromWardrobe, reorderWardrobe, setWardrobeDetails } from './db/memberships'
 import { clearSampleData, seedSampleData } from './db/seed'
 
 function analyze(path: string, table?: string) {
@@ -106,6 +107,7 @@ export function registerIpc(db: Db, dbPath: string): void {
     'catalog:notes': () => listNotes(db),
     'catalog:accords': () => listAccords(db),
     'wardrobe:move': (req: Parameters<Api['wardrobe']['move']>[0]) => moveToWardrobe(db, req),
+    'wardrobe:remove': (id: number, w: WardrobeKind) => removeFromWardrobe(db, id, w),
     'wardrobe:setDetails': (id: number, d: Parameters<Api['wardrobe']['setDetails']>[1]) => setWardrobeDetails(db, id, d),
     'wardrobe:pastBottles': () => listPastBottles(db),
     'wardrobe:reorder': (w: WardrobeKind, ids: number[]) => reorderWardrobe(db, w, ids),

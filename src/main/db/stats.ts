@@ -46,7 +46,7 @@ export function computeOverview(db: Db, now = new Date()): StatsOverview {
        FROM fragrances f LEFT JOIN wear_log w ON w.fragrance_id = f.id GROUP BY f.id`
     )
     .all() as PerFragrance[]
-  const collectionIds = new Set((db.prepare(`SELECT fragrance_id AS id FROM wardrobe_items WHERE wardrobe = 'collection'`).all() as { id: number }[]).map((r) => r.id))
+  const collectionIds = new Set((db.prepare(`SELECT fragrance_id AS id FROM wardrobe_memberships WHERE wardrobe = 'collection'`).all() as { id: number }[]).map((r) => r.id))
 
   const row = (p: PerFragrance, value: number): LeaderRow => ({ id: p.id, name: p.name, house: p.house, value, wears: p.wears })
   const byValueDesc = (a: LeaderRow, b: LeaderRow) => b.value - a.value || b.wears - a.wears || a.name.localeCompare(b.name)
@@ -77,7 +77,7 @@ export function computeOverview(db: Db, now = new Date()): StatsOverview {
 
   // Money: only bottles with a price count, and cost per wear divides by the wears of that fragrance.
   const priced = db
-    .prepare(`SELECT f.id, f.name, f.house, sum(b.price) AS spent FROM bottles b JOIN fragrances f ON f.id = b.fragrance_id WHERE b.price IS NOT NULL AND f.id IN (SELECT fragrance_id FROM wardrobe_items WHERE wardrobe = 'collection') GROUP BY f.id`)
+    .prepare(`SELECT f.id, f.name, f.house, sum(b.price) AS spent FROM bottles b JOIN fragrances f ON f.id = b.fragrance_id WHERE b.price IS NOT NULL AND f.id IN (SELECT fragrance_id FROM wardrobe_memberships WHERE wardrobe = 'collection') GROUP BY f.id`)
     .all() as { id: number; name: string; house: string; spent: number }[]
   const wearsOf = new Map(per.map((p) => [p.id, p.wears]))
   const costPerWear = priced
@@ -91,7 +91,7 @@ export function computeOverview(db: Db, now = new Date()): StatsOverview {
   const wornSpend = pricedWorn.reduce((s, c) => s + c.spent, 0)
   const wornWears = pricedWorn.reduce((s, c) => s + c.wears, 0)
 
-  const ml = db.prepare(`SELECT coalesce(sum(size_ml), 0) AS owned, coalesce(sum(remaining_ml), 0) AS remaining FROM bottles WHERE status = 'active' AND fragrance_id IN (SELECT fragrance_id FROM wardrobe_items WHERE wardrobe = 'collection')`).get() as { owned: number; remaining: number }
+  const ml = db.prepare(`SELECT coalesce(sum(size_ml), 0) AS owned, coalesce(sum(remaining_ml), 0) AS remaining FROM bottles WHERE status = 'active' AND fragrance_id IN (SELECT fragrance_id FROM wardrobe_memberships WHERE wardrobe = 'collection')`).get() as { owned: number; remaining: number }
   const cutoff = localDate(new Date(now.getTime() - 30 * DAY_MS))
   const wears30 = (db.prepare('SELECT count(*) AS n FROM wear_log WHERE substr(worn_at, 1, 10) >= ?').get(cutoff) as { n: number }).n
 
@@ -102,7 +102,7 @@ export function computeOverview(db: Db, now = new Date()): StatsOverview {
         `SELECT b.id AS bottleId, f.id AS fragranceId, f.name, f.house, b.size_ml AS sizeMl, b.price AS paid, b.market_price AS market,
                 b.market_checked_on AS checkedOn, b.market_source AS source
          FROM bottles b JOIN fragrances f ON f.id = b.fragrance_id
-         WHERE (b.price IS NOT NULL OR b.market_price IS NOT NULL) AND f.id IN (SELECT fragrance_id FROM wardrobe_items WHERE wardrobe = 'collection')`
+         WHERE (b.price IS NOT NULL OR b.market_price IS NOT NULL) AND f.id IN (SELECT fragrance_id FROM wardrobe_memberships WHERE wardrobe = 'collection')`
       )
       .all() as { bottleId: number; fragranceId: number; name: string; house: string; sizeMl: number; paid: number | null; market: number | null; checkedOn: string | null; source: string | null }[]
   )
@@ -118,7 +118,7 @@ export function computeOverview(db: Db, now = new Date()): StatsOverview {
     })
     .sort((a, b) => (b.savedPercent ?? -Infinity) - (a.savedPercent ?? -Infinity) || a.name.localeCompare(b.name))
   const activeMarket = db
-    .prepare(`SELECT count(*) AS n, coalesce(sum(market_price), 0) AS total FROM bottles WHERE market_price IS NOT NULL AND status = 'active' AND fragrance_id IN (SELECT fragrance_id FROM wardrobe_items WHERE wardrobe = 'collection')`)
+    .prepare(`SELECT count(*) AS n, coalesce(sum(market_price), 0) AS total FROM bottles WHERE market_price IS NOT NULL AND status = 'active' AND fragrance_id IN (SELECT fragrance_id FROM wardrobe_memberships WHERE wardrobe = 'collection')`)
     .get() as { n: number; total: number }
   const compared = priceRows.filter((r) => r.saved != null)
 
@@ -127,7 +127,7 @@ export function computeOverview(db: Db, now = new Date()): StatsOverview {
       `SELECT b.id AS bottleId, f.id AS fragranceId, f.name, b.size_ml, b.remaining_ml, b.ml_per_spray,
               (SELECT avg(sprays) FROM wear_log w WHERE w.fragrance_id = f.id AND w.sprays > 0) AS avg_sprays
        FROM bottles b JOIN fragrances f ON f.id = b.fragrance_id
-       WHERE b.status = 'active' AND b.size_ml > 0 AND f.id IN (SELECT fragrance_id FROM wardrobe_items WHERE wardrobe = 'collection') AND b.remaining_ml * 1.0 / b.size_ml < ? ORDER BY b.remaining_ml * 1.0 / b.size_ml`
+       WHERE b.status = 'active' AND b.size_ml > 0 AND f.id IN (SELECT fragrance_id FROM wardrobe_memberships WHERE wardrobe = 'collection') AND b.remaining_ml * 1.0 / b.size_ml < ? ORDER BY b.remaining_ml * 1.0 / b.size_ml`
     )
     .all(threshold) as { bottleId: number; fragranceId: number; name: string; size_ml: number; remaining_ml: number; ml_per_spray: number; avg_sprays: number | null }[]
   const lowBottles: LowBottleWarning[] = lowRows.map((r) => {

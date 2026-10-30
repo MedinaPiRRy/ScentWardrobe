@@ -63,6 +63,20 @@ export interface ShelfBottle {
 }
 
 /** Lightweight row used on shelves and in lists. */
+/** One wardrobe a fragrance is in, with the things that belong to being on that shelf. */
+export interface Membership {
+  wardrobe: WardrobeKind
+  shelfPosition: number
+  /** Wishlist: brought in by an importer and still without "what it smells like to me". */
+  importedPending: boolean
+  dislikeNote: string | null
+  hadYears: string | null
+  hadMemory: string | null
+  hadReason: HadReason | null
+  desiredSizeMl: number | null
+  addedAt: string
+}
+
 export interface FragranceSummary {
   id: number
   name: string
@@ -70,7 +84,12 @@ export interface FragranceSummary {
   year: number | null
   concentration: string | null
   imagePath: string | null
+  /** The main wardrobe (Collection first, then Wishlist, To Try, Had, Garbage); null for a fragrance that is not mine. */
   wardrobe: WardrobeKind | null
+  /** Every wardrobe it is in, in the same order. */
+  wardrobes: WardrobeKind[]
+  memberships: Membership[]
+  /** Position within the main wardrobe. */
   shelfPosition: number | null
   rating: number | null
   topAccords: AccordStrength[]
@@ -144,6 +163,13 @@ export interface NewBottleInput {
 export interface MoveRequest {
   fragranceId: number
   to: WardrobeKind
+  /** For a move: the wardrobe it leaves. Without it the request only adds `to`. */
+  from?: WardrobeKind
+  /**
+   * Garbage Perfumes cannot be combined with other wardrobes. Set when I have confirmed that the conflicting
+   * memberships may be removed.
+   */
+  confirmExclusive?: boolean
   /** Required when moving to the wishlist and no impression exists yet. */
   impression?: string
   /** Required when moving to the collection and the fragrance has no active bottle yet. */
@@ -174,6 +200,7 @@ export interface PastBottle {
 export type ErrorCode =
   | 'WISHLIST_IMPRESSION_REQUIRED'
   | 'BOTTLE_REQUIRED'
+  | 'GARBAGE_CONFLICT'
   | 'NOT_FOUND'
   | 'DUPLICATE'
   | 'NETWORK'
@@ -243,7 +270,10 @@ export interface LocalHit {
   house: string
   year: number | null
   concentration: string | null
+  /** The main wardrobe. */
   wardrobe: WardrobeKind | null
+  /** Every wardrobe it is in. */
+  wardrobes: WardrobeKind[]
   /** For Garbage Perfumes: why I dislike it, so I do not buy it again. */
   dislikeNote?: string | null
   score: number
@@ -532,9 +562,14 @@ export interface MemberItem {
 export interface MemberPreviewItem extends MemberItem {
   /** Where it will go. */
   target: WardrobeKind
-  /** new = will be added; exists = already in the app (skipped); duplicate = also in a stronger list (skipped). */
-  status: 'new' | 'exists' | 'duplicate'
-  /** What it matched, for "exists". */
+  /**
+   * new = a fragrance that is not in the app yet (created, in this wardrobe);
+   * adds = a fragrance that is already in the app (or created earlier in this same import) and gets this wardrobe too;
+   * exists = it is already in this wardrobe (skipped);
+   * blocked = it is in Garbage Perfumes, which cannot be combined with other wardrobes (skipped).
+   */
+  status: 'new' | 'adds' | 'exists' | 'blocked'
+  /** What it matched, for everything but "new". */
   existingName?: string
 }
 

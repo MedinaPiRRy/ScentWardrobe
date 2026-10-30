@@ -7,7 +7,8 @@ import { buildCollectionCsv } from './exportCsv'
 import { openDatabase } from './index'
 import { migrations, runMigrations } from './migrations'
 import { recommendCandidates } from './recommend'
-import { applyMove, getFragrance, listFragrances, listPastBottles, moveToWardrobe, setWardrobeDetails } from './repo'
+import { getFragrance, listFragrances, listPastBottles } from './repo'
+import { applyMove, moveToWardrobe, setWardrobeDetails, wardrobesOf } from './memberships'
 import { searchLocal } from './../data/catalog'
 import { computeOverview } from './stats'
 import { logWear } from './wears'
@@ -27,7 +28,11 @@ function setup() {
   }
   return { db, mk }
 }
-const move = (db: ReturnType<typeof openDatabase>, id: number, to: WardrobeKind, extra: object = {}) => moveToWardrobe(db, { fragranceId: id, to, ...extra })
+// These tests are about moving: the fragrance leaves the wardrobe it is in (its main one) for the new one.
+const move = (db: ReturnType<typeof openDatabase>, id: number, to: WardrobeKind, extra: object = {}) => {
+  const from = wardrobesOf(db, id).find((w) => w !== to)
+  return moveToWardrobe(db, { fragranceId: id, to, ...(from && !wardrobesOf(db, id).includes(to) ? { from } : {}), ...extra })
+}
 
 describe('migration 5 (five wardrobes)', () => {
   it('rebuilds the table, keeps existing rows and keeps the wishlist rule', () => {
@@ -43,8 +48,8 @@ describe('migration 5 (five wardrobes)', () => {
     expect(() => old.prepare("INSERT INTO fragrances (id, name, house) VALUES (4, 'D', 'H')").run()).not.toThrow()
     expect(() => old.prepare("INSERT INTO wardrobe_items (fragrance_id, wardrobe) VALUES (4, 'garbage')").run()).toThrow()
 
-    runMigrations(old)
-    expect(old.pragma('user_version', { simple: true })).toBe(migrations[migrations.length - 1].version)
+    runMigrations(old, migrations.filter((m) => m.version <= 5))
+    expect(old.pragma('user_version', { simple: true })).toBe(5)
     expect(old.prepare('SELECT fragrance_id, wardrobe, shelf_position, rating, desired_size_ml, imported FROM wardrobe_items ORDER BY fragrance_id').all()).toEqual([
       { fragrance_id: 1, wardrobe: 'collection', shelf_position: 4, rating: 8, desired_size_ml: null, imported: 0 },
       { fragrance_id: 2, wardrobe: 'wishlist', shelf_position: 0, rating: null, desired_size_ml: 50, imported: 0 },
@@ -61,6 +66,16 @@ describe('migration 5 (five wardrobes)', () => {
     expect(old.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name").all().map((r) => (r as { name: string }).name)).toEqual(
       expect.arrayContaining(['wishlist_needs_impression_insert', 'wishlist_needs_impression_update', 'impression_cannot_be_blanked', 'impression_cannot_be_deleted'])
     )
+
+    // and the next migration carries everything over to memberships, with the rating on the fragrance
+    runMigrations(old)
+    expect(old.prepare('SELECT fragrance_id, wardrobe, shelf_position, desired_size_ml FROM wardrobe_memberships ORDER BY fragrance_id').all()).toEqual([
+      { fragrance_id: 1, wardrobe: 'collection', shelf_position: 4, desired_size_ml: null },
+      { fragrance_id: 2, wardrobe: 'wishlist', shelf_position: 0, desired_size_ml: 50 },
+      { fragrance_id: 3, wardrobe: 'to_try', shelf_position: 1, desired_size_ml: null },
+      { fragrance_id: 4, wardrobe: 'had', shelf_position: 0, desired_size_ml: null }
+    ])
+    expect(old.prepare('SELECT id, rating FROM fragrances ORDER BY id').all()).toEqual([{ id: 1, rating: 8 }, { id: 2, rating: null }, { id: 3, rating: null }, { id: 4, rating: null }])
     old.close()
   })
 
@@ -68,7 +83,7 @@ describe('migration 5 (five wardrobes)', () => {
     const { db, mk } = setup()
     const id = mk('A')
     expect(db.pragma('foreign_key_check')).toEqual([])
-    db.prepare('DELETE FROM wardrobe_items WHERE fragrance_id = ?').run(id)
+    db.prepare('DELETE FROM wardrobe_memberships WHERE fragrance_id = ?').run(id)
     db.prepare('DELETE FROM fragrances WHERE id = ?').run(id)
     expect(db.prepare('SELECT count(*) AS c FROM bottles').get()).toEqual({ c: 0 })
   })
@@ -118,8 +133,8 @@ describe('Garbage Perfumes', () => {
     setWardrobeDetails(db, id, { dislikeNote: 'too aquatic' })
     expect(getFragrance(db, id)!.dislikeNote).toBe('too aquatic')
     move(db, id, 'to_try')
-    expect(getFragrance(db, id)!.dislikeNote).toBe('too aquatic') // history kept
-    move(db, id, 'garbage')
+    expect(getFragrance(db, id)!.dislikeNote).toBeNull() // it is not in the bin any more, so no note is shown
+    move(db, id, 'garbage') // ...but it is remembered, and comes back with it
     expect(getFragrance(db, id)!.dislikeNote).toBe('too aquatic')
     setWardrobeDetails(db, id, { dislikeNote: '' })
     expect(getFragrance(db, id)!.dislikeNote).toBeNull()
@@ -223,7 +238,7 @@ describe('imported wishlist items', () => {
     expect(listFragrances(db).find((f) => f.id === id)!.importedPending).toBe(false)
     // blanking the note is now refused, like for any other wishlist item
     expect(setImpression(db, id, '')).toMatchObject({ ok: false, code: 'WISHLIST_IMPRESSION_REQUIRED' })
-    expect(db.prepare('SELECT imported FROM wardrobe_items WHERE fragrance_id = ?').get(id)).toEqual({ imported: 0 })
+    expect(db.prepare('SELECT imported FROM wardrobe_memberships WHERE fragrance_id = ?').get(id)).toEqual({ imported: 0 })
   })
 
   it('may keep a blank note while imported, and lose the exemption when moved away and back', () => {
@@ -232,15 +247,15 @@ describe('imported wishlist items', () => {
     applyMove(db, { fragranceId: id, to: 'wishlist' }, { imported: true })
     expect(setImpression(db, id, '')).toMatchObject({ ok: true })
     move(db, id, 'to_try')
-    expect(db.prepare('SELECT imported FROM wardrobe_items WHERE fragrance_id = ?').get(id)).toEqual({ imported: 0 })
+    expect(db.prepare('SELECT imported FROM wardrobe_memberships WHERE fragrance_id = ?').get(id)).toEqual({ imported: 0 })
     expect(move(db, id, 'wishlist')).toMatchObject({ ok: false, code: 'WISHLIST_IMPRESSION_REQUIRED' })
   })
 
   it('the database itself still refuses an unflagged wishlist item without a note', () => {
     const { db, mk } = setup()
     const id = mk('Wanted', 'to_try')
-    expect(() => db.prepare("UPDATE wardrobe_items SET wardrobe = 'wishlist' WHERE fragrance_id = ?").run(id)).toThrow(/WISHLIST_IMPRESSION_REQUIRED/)
-    expect(() => db.prepare("UPDATE wardrobe_items SET wardrobe = 'wishlist', imported = 1 WHERE fragrance_id = ?").run(id)).not.toThrow()
+    expect(() => db.prepare("UPDATE wardrobe_memberships SET wardrobe = 'wishlist' WHERE fragrance_id = ?").run(id)).toThrow(/WISHLIST_IMPRESSION_REQUIRED/)
+    expect(() => db.prepare("UPDATE wardrobe_memberships SET wardrobe = 'wishlist', imported = 1 WHERE fragrance_id = ?").run(id)).not.toThrow()
   })
 })
 

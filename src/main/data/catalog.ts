@@ -1,3 +1,4 @@
+import { sortWardrobes } from '@shared/wardrobes'
 import type { ColumnMapping, FragranceInput, ImportPreview, ImportResult, LocalHit, WardrobeKind } from '@shared/types'
 import type { Db } from '../db'
 import { normalize, prepare, score, tokens, type Searchable } from './fuzzy'
@@ -47,15 +48,18 @@ export function searchLocal(db: Db, query: string, limit = 30): LocalHit[] {
   const mine: LocalHit[] = []
   const rows = db
     .prepare(
-      `SELECT f.id, f.name, f.house, f.year, f.concentration, w.wardrobe, w.dislike_note AS dislikeNote
-       FROM fragrances f LEFT JOIN wardrobe_items w ON w.fragrance_id = f.id`
+      `SELECT f.id, f.name, f.house, f.year, f.concentration,
+              (SELECT group_concat(w.wardrobe) FROM wardrobe_memberships w WHERE w.fragrance_id = f.id) AS wardrobes,
+              (SELECT w.dislike_note FROM wardrobe_memberships w WHERE w.fragrance_id = f.id AND w.wardrobe = 'garbage') AS dislikeNote
+       FROM fragrances f`
     )
-    .all() as { id: number; name: string; house: string; year: number | null; concentration: string | null; wardrobe: WardrobeKind | null; dislikeNote: string | null }[]
+    .all() as { id: number; name: string; house: string; year: number | null; concentration: string | null; wardrobes: string | null; dislikeNote: string | null }[]
   const mineKeys = new Set<string>()
   for (const r of rows) {
     const sc = score(q, prepare(r.name, r.house))
     if (sc > 0) {
-      mine.push({ source: 'mine', id: r.id, name: r.name, house: r.house, year: r.year, concentration: r.concentration, wardrobe: r.wardrobe, dislikeNote: r.wardrobe === 'garbage' ? r.dislikeNote : null, score: sc })
+      const wardrobes = sortWardrobes(r.wardrobes ? (r.wardrobes.split(',') as WardrobeKind[]) : [])
+      mine.push({ source: 'mine', id: r.id, name: r.name, house: r.house, year: r.year, concentration: r.concentration, wardrobe: wardrobes[0] ?? null, wardrobes, dislikeNote: wardrobes.includes('garbage') ? r.dislikeNote : null, score: sc })
       mineKeys.add(keyOf(r.name, r.house))
     }
   }
@@ -64,7 +68,7 @@ export function searchLocal(db: Db, query: string, limit = 30): LocalHit[] {
   for (const r of getIndex(db)) {
     const sc = score(q, r.s)
     if (sc > 0) {
-      fromDataset.push({ source: 'dataset', id: r.id, name: r.name, house: r.house, year: r.year, concentration: r.concentration, wardrobe: null, score: sc + popularityBonus(r.popularity) })
+      fromDataset.push({ source: 'dataset', id: r.id, name: r.name, house: r.house, year: r.year, concentration: r.concentration, wardrobe: null, wardrobes: [], score: sc + popularityBonus(r.popularity) })
     }
   }
 

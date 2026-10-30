@@ -45,9 +45,9 @@ describe('rating history', () => {
     const { db, mk } = setup()
     const f = mk('A', 'to_try')
     setRating(db, f, 9)
-    db.prepare("UPDATE wardrobe_items SET wardrobe = 'collection' WHERE fragrance_id = ?").run(f)
+    db.prepare("UPDATE wardrobe_memberships SET wardrobe = 'collection' WHERE fragrance_id = ?").run(f)
     expect(getFragrance(db, f)!.ratingHistory).toHaveLength(1)
-    db.prepare('DELETE FROM wardrobe_items WHERE fragrance_id = ?').run(f)
+    db.prepare('DELETE FROM wardrobe_memberships WHERE fragrance_id = ?').run(f)
     db.prepare('DELETE FROM fragrances WHERE id = ?').run(f)
     expect((db.prepare('SELECT count(*) AS c FROM rating_history').get() as { c: number }).c).toBe(0)
   })
@@ -77,7 +77,7 @@ describe('rating from the wear form', () => {
 
 describe('re-rating suggestions from the database', () => {
   const now = new Date(2026, 9, 30)
-  const age = (db: ReturnType<typeof openDatabase>, id: number, days: number) => db.prepare("UPDATE wardrobe_items SET added_at = datetime('now', ?) WHERE fragrance_id = ?").run(`-${days} days`, id)
+  const age = (db: ReturnType<typeof openDatabase>, id: number, days: number) => db.prepare("UPDATE wardrobe_memberships SET added_at = datetime('now', ?) WHERE fragrance_id = ?").run(`-${days} days`, id)
 
   it('suggests an unrated fragrance that is worn a lot, only for My Collection', () => {
     const { db, mk } = setup()
