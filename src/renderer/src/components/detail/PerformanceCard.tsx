@@ -74,7 +74,7 @@ export default function PerformanceCard({ p, community }: { p: PerformanceStats;
               <YAxis yAxisId="p" domain={[0, 5]} tick={{ fill: 'var(--chart-text)', fontSize: 10 }} />
               <YAxis yAxisId="l" orientation="right" tick={{ fill: 'var(--chart-text)', fontSize: 10 }} />
               <Tooltip contentStyle={{ background: 'var(--color-ink-800)', border: '1px solid var(--color-ink-600)', color: 'var(--color-cream)', fontSize: 12 }} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => <span style={{ color: 'var(--color-cream)' }}>{v}</span>} />
               <Line yAxisId="p" type="monotone" dataKey="projection" name="Projection (1-5)" stroke="#d9b26f" dot={{ r: 2 }} connectNulls />
               <Line yAxisId="l" type="monotone" dataKey="longevity" name="Longevity (h)" stroke="#7fb4e0" dot={{ r: 2 }} connectNulls />
             </LineChart>

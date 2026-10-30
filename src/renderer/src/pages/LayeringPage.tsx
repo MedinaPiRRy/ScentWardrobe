@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer } from 'recharts'
 import type { SavedCombo } from '@shared/types'
 import { accordColor } from '@shared/accordColors'
+import { readable } from '../components/detail/AccordBars'
 import { analyzeLayer, buildAffinity, suggestPartners, VERDICT_GREAT, VERDICT_WORTH_TESTING, type AffinityMatrix, type LayerItem, type RatedCombo, type Verdict } from '@shared/layering'
 import BottleSvg from '../components/BottleSvg'
 import { ghostBtn, primaryBtn } from '../components/Dialogs'
@@ -365,7 +366,7 @@ export default function LayeringPage() {
                   {analysis.blend.slice(0, 9).map((a) => (
                     <div key={a.name} className="relative h-6 overflow-hidden rounded bg-ink-900" title={`${a.name}: ${a.strength}`}>
                       <div className="h-full rounded" style={{ width: `${Math.max(a.strength, 12)}%`, background: accordColor(a.name) }} />
-                      <span className="absolute inset-y-0 left-2 flex items-center text-xs font-medium text-black/80 mix-blend-normal" style={{ textShadow: '0 0 3px rgba(255,255,255,.6)' }}>
+                      <span className="absolute inset-y-0 left-0 flex items-center rounded px-2 text-xs font-medium" style={{ color: readable(accordColor(a.name)), background: accordColor(a.name) }}>
                         {a.name}
                       </span>
                     </div>

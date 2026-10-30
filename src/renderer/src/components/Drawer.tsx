@@ -69,10 +69,6 @@ export default function Drawer({ open, onToggle, count, children }: Props) {
         >
           Decants · Samples · Minis
         </div>
-        <span className="ml-3 text-xs" style={{ color: '#f1d9a8' }}>
-          {count === 0 ? 'empty' : `${count} ${count === 1 ? 'vial' : 'vials'}`}
-        </span>
-
         {/* the handle */}
         <button
           onClick={onToggle}
@@ -90,7 +86,10 @@ export default function Drawer({ open, onToggle, count, children }: Props) {
           <span className="absolute -right-1 top-1/2 h-5 w-3 -translate-y-1/2 rounded-sm bg-[#8a6420]" />
         </button>
 
-        <button className="ml-auto rounded-md px-3 py-1 text-xs hover:bg-black/15" style={{ color: '#f1d9a8' }} onClick={onToggle} tabIndex={-1} aria-hidden>
+        <span className="ml-auto text-xs" style={{ color: '#f1d9a8' }}>
+          {count === 0 ? 'empty' : `${count} ${count === 1 ? 'vial' : 'vials'}`}
+        </span>
+        <button className="ml-2 rounded-md px-3 py-1 text-xs hover:bg-black/15" style={{ color: '#f1d9a8' }} onClick={onToggle} tabIndex={-1} aria-hidden>
           {open ? 'Close ▴' : 'Open ▾'}
         </button>
       </div>
