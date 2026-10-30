@@ -31,6 +31,7 @@ Built with Electron, React, TypeScript and SQLite. Runs on Windows and macOS (In
 - **Calendar.** A month grid with a bottle thumbnail per day and a year heatmap. Click a day to see, edit, delete or add wears, including layered blends and fragrances that are not yours (marked "not mine").
 - **Layering Lab.** Drag two or three bottles together, set the spray ratio and see a blended accord chart, a predicted description and a 0-100 compatibility score with reasons. The scoring adjusts to the combinations you rate.
 - **Recommendations.** Activity, time of day and live weather give your top three picks with an explanation, a one-click "Wear this" and a layering idea.
+- **Ratings that matter.** A 1-10 rating weighs in recommendations and in how Layering Lab orders partners (never in a pair's score), with a floor so nothing is forgotten, a history of how your taste changed and gentle re-rating suggestions.
 - **Stats.** Most and least worn, wears and ml per month, leaderboards, bottles running low, cost per wear.
 - **Prices and currency.** Per bottle: what you paid and a market price you looked up (with date and where), price per ml, how much you saved or overpaid. Pick your currency in Settings.
 - **Adding fragrances.** Fuzzy search over your library and an optional imported dataset, a single Fragrantica page link, a whole Fragrantica profile (Have / Want / Had / custom shelves) with a preview first, a pasted list or CSV, or a manual form.

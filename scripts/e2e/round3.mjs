@@ -136,6 +136,91 @@ try {
     check('a past day gets no live weather', !w.label && w.temp === '', JSON.stringify(w))
   }
 
+  if (phase(3)) {
+    console.log('--- Phase 3: ratings')
+    await j('window.api.dev.seedSampleData()')
+    await app.reload()
+    await app.go('#/')
+    await sleep(900)
+    const list = await j('window.api.fragrances.list()')
+    const coll = list.filter((x) => x.wardrobe === 'collection')
+    const target = coll[0]
+    const rectOf = (id) => app.ev(`(() => { const el = [...document.querySelectorAll('main [role=button]')].find((e) => e.getAttribute('aria-label') === ${JSON.stringify(`${target.name} by ${target.house}`)}); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 - 20 } })()`)
+    const ratingOf = async (id) => (await j(`window.api.fragrances.get(${id})`))
+
+    // quick control on hover
+    await app.clickStartsWith('My Collection')
+    await sleep(400)
+    const c = await rectOf()
+    await app.mouse('mouseMoved', c.x, c.y)
+    await sleep(500)
+    check('hovering a bottle shows its rating in the tooltip', /Rated \d+\/10|Not rated yet/.test(await app.text()))
+    const strip = await app.ev(`!!document.querySelector('[role=radiogroup][aria-label="Rate ${target.name}"]')`)
+    check('hovering a bottle shows the quick rating control', strip === true)
+    await app.ev(`document.querySelector('[role=radiogroup][aria-label="Rate ${target.name}"] button[aria-label="8 out of 10"]').click()`)
+    await sleep(900)
+    let d = await ratingOf(target.id)
+    check('clicking 8 on the shelf rates it and records the source', d.rating === 8 && d.ratingHistory[0].source === 'shelf', JSON.stringify(d.ratingHistory[0]))
+
+    // context menu -> Rate...
+    await app.mouse('mouseMoved', 5, 5)
+    await sleep(300)
+    await app.ev(`(() => { const el = [...document.querySelectorAll('main [role=button]')].find((e) => e.getAttribute('aria-label') === ${JSON.stringify(`${target.name} by ${target.house}`)}); const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.x + 30, clientY: r.y + 30 })) })()`)
+    await sleep(400)
+    check('the context menu offers Rate…', await app.clickStartsWith('Rate…'))
+    await sleep(500)
+    await app.ev(`document.querySelector('[role=dialog] button[aria-label="3 out of 10"]').click()`)
+    await sleep(800)
+    d = await ratingOf(target.id)
+    check('rating from the dialog re-rates it (8 -> 3) and keeps the history', d.rating === 3 && d.ratingHistory.length === 2, JSON.stringify(d.ratingHistory.map((h) => h.rating)))
+    await app.key('Escape')
+    await sleep(300)
+
+    // rating filter
+    await app.ev(`(() => { const s = document.querySelector('select[aria-label="Rating filter"]'); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(s, 'low'); s.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await sleep(500)
+    const shown = await app.ev(`[...document.querySelectorAll('main [role=button]')].map((e) => e.getAttribute('aria-label'))`)
+    check('the rating filter shows only the low-rated bottle', shown.length === 1 && shown[0].startsWith(target.name), JSON.stringify(shown))
+    await app.ev(`(() => { const s = document.querySelector('select[aria-label="Rating filter"]'); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(s, 'all'); s.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+
+    // detail panel: history, and rating from the wear form
+    await app.go(`#/?open=${target.id}`)
+    await sleep(1200)
+    check('the detail view lists my rating over time', (await app.text()).includes('My rating over time') && (await app.text()).includes('3/10'))
+    await app.clickText('Log a wear')
+    await sleep(900)
+    await app.ev(`document.querySelector('[role=dialog]:last-of-type button[aria-label="9 out of 10"]')?.click()`)
+    await sleep(200)
+    await app.clickText('Log wear', '[role=dialog] button')
+    await sleep(1000)
+    d = await ratingOf(target.id)
+    check('rating from the wear form becomes my rating', d.rating === 9 && d.ratingHistory[0].source === 'wear', `${d.rating} ${d.ratingHistory[0]?.source}`)
+    await app.key('Escape')
+
+    // recommendations: the weight shows in "Why?"
+    const [a, b] = coll.slice(1, 3)
+    await j(`window.api.wardrobe.setRating(${a.id}, 10)`)
+    await j(`window.api.wardrobe.setRating(${b.id}, 1)`)
+    await app.go('#/recommendations')
+    await sleep(1500)
+    await app.ev(`[...document.querySelectorAll('button')].filter((x) => x.textContent.trim() === 'Why?').forEach((x) => x.click())`)
+    await sleep(500)
+    const txt = await app.text()
+    check('the Why? breakdown mentions how my rating weighs', /Rated \d+\/10: (favoured|held back|normal)|Not rated yet: treated as neutral/.test(txt))
+
+    // layering: suggested partners show my rating
+    await app.go('#/layering')
+    await sleep(900)
+    await app.ev(`(() => { const s = document.querySelector('select[aria-label="Fragrance to find a partner for"]'); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(s, '${coll[3].id}'); s.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await sleep(800)
+    check('layering partners show whether I rated them', /You rated it \d+\/10|Not rated yet/.test(await app.text()))
+
+    // no suggestions for a fresh library
+    await app.go('#/')
+    await sleep(900)
+    check('no rating suggestions for brand new fragrances', (await app.ev(`!document.querySelector('[aria-label="Rating suggestions"]')`)) === true)
+  }
+
   check('no console errors', app.logs.errors.length === 0, app.logs.errors.slice(0, 3).join(' | '))
   check('no unhandled exceptions', app.logs.exceptions.length === 0, app.logs.exceptions.slice(0, 3).join(' | '))
 } catch (e) {

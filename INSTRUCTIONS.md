@@ -135,6 +135,26 @@ with the reasons. **Suggest a layer** ranks the best partners for any fragrance 
 together). Save a blend, rate it after you try it, and the scoring adapts to your ratings. You can log a wear of a blend
 like any fragrance. The affinity matrix (which accords pair well) can be edited in **Settings**.
 
+## Ratings
+
+Rate any fragrance from 1 to 10, and change your mind whenever you like:
+
+- **On the shelf:** hover a bottle and click a number (click the same number again to clear it). The tooltip shows the current rating.
+- **Right-click → Rate…** opens a small dialog.
+- **In the detail view:** the number buttons on the left. **My rating over time** lists every change with its date and a small line.
+- **When you log a wear:** an optional *How did you like it today?* sets your rating from today's experience.
+- **My Collection** has a **rating filter** (7-10, 4-6, 1-3, not rated yet), and *Sort: My rating* puts the best first.
+
+Ratings steer the app, not just decorate it. How well a fragrance fits the day is multiplied by a weight:
+
+| Rating | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Weight | 0.55 | 0.60 | 0.65 | 0.90 | 1.00 | 1.05 | 1.12 | 1.18 | 1.22 | 1.25 |
+
+So 1-3 are suggested rarely, 4-6 normally, and 7-10 are favoured. **Not rated yet** is neutral (the same as a 5) and never counts against a fragrance. **Nothing is forgotten:** the penalty of a low rating fades the longer a fragrance sits unworn, and is gone after about three months, so a bottle you rated 2 still comes back. **Why?** on a recommendation shows how your rating weighed in. In the **Layering Lab**, partner suggestions are listed a little higher when you rated them highly (and show your rating), but the compatibility score of a pair is never changed by a rating.
+
+My Collection also shows a gentle, dismissible strip when a rating may be out of date: a fragrance you never rated but wore a lot, one you rated low but keep wearing, one you rated high but have not touched for months, or a rating more than a year old. Use the number buttons right there, or **Not now** to hide that suggestion for three months.
+
 ## Recommendations
 
 Pick an **activity**, a **time of day** and the weather. Set your city once in **Settings → Weather location** to
