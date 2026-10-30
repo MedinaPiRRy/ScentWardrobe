@@ -34,6 +34,7 @@ const api: Api = {
   journal: { add: c('journal:add'), update: c('journal:update'), delete: c('journal:delete') },
   bottles: { add: c('bottles:add'), update: c('bottles:update'), markEmpty: c('bottles:markEmpty') },
   catalog: { notes: c('catalog:notes'), accords: c('catalog:accords') },
+  browse: { previewImage: c('browse:previewImage') },
   search: { local: c('search:local'), datasetEntry: c('search:datasetEntry'), datasetInfo: c('search:datasetInfo') },
   importer: {
     pickFile: c('importer:pickFile'),

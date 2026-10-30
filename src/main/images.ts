@@ -110,12 +110,8 @@ function save(png: Buffer, key: string): string {
   return name
 }
 
-/** Downloads once; returns the cached file name. Existing files are reused. */
-export async function cacheRemoteImage(url: string, removeBackground = true): Promise<string> {
-  const key = `${url}|${removeBackground}`
-  const name = `${createHash('sha1').update(key).digest('hex').slice(0, 16)}.png`
-  if (existsSync(join(imagesDir(), name))) return name
-
+/** Downloads one picture into memory, with the safety limits (allowed hosts only, size and time caps). */
+async function downloadBytes(url: string): Promise<Buffer> {
   // The address can come from a web page, so only https pictures from Fragrantica's own hosts are fetched.
   if (!isAllowedImageUrl(url)) throw new Error('That picture is not on a site the app downloads from.')
   const res = await net.fetch(url, {
@@ -127,7 +123,24 @@ export async function cacheRemoteImage(url: string, removeBackground = true): Pr
   if (Number(res.headers.get('content-length') ?? 0) > MAX_BYTES) throw new Error('Image is too large.')
   const bytes = Buffer.from(await res.arrayBuffer())
   if (bytes.length > MAX_BYTES) throw new Error('Image is too large.')
-  return save(processImage(bytes, removeBackground).png, key)
+  return bytes
+}
+
+/** Downloads once; returns the cached file name. Existing files are reused. */
+export async function cacheRemoteImage(url: string, removeBackground = true): Promise<string> {
+  const key = `${url}|${removeBackground}`
+  const name = `${createHash('sha1').update(key).digest('hex').slice(0, 16)}.png`
+  if (existsSync(join(imagesDir(), name))) return name
+  return save(processImage(await downloadBytes(url), removeBackground).png, key)
+}
+
+/** A picture for looking at only (Browse): processed like a stored one, returned as a data URL, never written to disk. */
+export async function previewRemoteImage(url: string): Promise<string | null> {
+  try {
+    return `data:image/png;base64,${processImage(await downloadBytes(url), true).png.toString('base64')}`
+  } catch {
+    return null
+  }
 }
 
 /** Reads a user-chosen file, processes it and stores it. */

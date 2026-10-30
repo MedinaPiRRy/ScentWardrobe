@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import BrowsePage from './pages/BrowsePage'
 import CalendarPage from './pages/CalendarPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import FollowUpPrompt from './components/FollowUpPrompt'
@@ -13,6 +14,7 @@ import WardrobesPage from './pages/WardrobesPage'
 
 const NAV = [
   { to: '/', label: 'Wardrobes', icon: '▥' },
+  { to: '/browse', label: 'Browse', icon: '⌕' },
   { to: '/layering', label: 'Layering Lab', icon: '⚗' },
   { to: '/recommendations', label: 'Recommendations', icon: '☼' },
   { to: '/calendar', label: 'Calendar', icon: '▦' },
@@ -46,7 +48,8 @@ export default function App() {
         navigate('/?add=1')
       } else if (k === 'f' && pathname !== '/') {
         e.preventDefault()
-        navigate('/?search=1')
+        // Outside the wardrobes, search means Browse: look anything up without adding it.
+        navigate('/browse')
       }
     }
     window.addEventListener('keydown', key)
@@ -75,13 +78,14 @@ export default function App() {
         <div className="mt-auto px-3 text-[11px] leading-relaxed text-cream/35">
           {MOD_LABEL}N add a fragrance
           <br />
-          {MOD_LABEL}F search
+          {MOD_LABEL}F search (Browse)
         </div>
       </nav>
       <main className="min-w-0 flex-1 overflow-y-auto">
         <ErrorBoundary resetKey={pathname}>
           <Routes>
             <Route path="/" element={<WardrobesPage />} />
+            <Route path="/browse" element={<BrowsePage />} />
             <Route path="/layering" element={<LayeringPage />} />
             <Route path="/recommendations" element={<RecommendationsPage />} />
             <Route path="/calendar" element={<CalendarPage />} />

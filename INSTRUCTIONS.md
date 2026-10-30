@@ -42,9 +42,9 @@ The app opens on **My Collection** with empty shelves. You can:
 - go to **Settings → Fragrance data → Load sample data** to explore with 12 well-known fragrances (and **Remove sample data**
   when you are done, which never touches your own entries).
 
-Pages in the left bar: **Wardrobes**, **Layering Lab**, **Recommendations**, **Calendar**, **Stats**, **Settings**.
+Pages in the left bar: **Wardrobes**, **Browse**, **Layering Lab**, **Recommendations**, **Calendar**, **Stats**, **Settings**.
 Shortcuts: **Ctrl+N** (Command+N on a Mac) adds a fragrance from anywhere, **Ctrl+F** (Command+F) searches the
-wardrobes, **Esc** closes the top dialog.
+wardrobes (or opens Browse when you are on another page), **Esc** closes the top dialog.
 
 ## Adding fragrances
 
@@ -64,6 +64,12 @@ fragrances you already have in *other* wardrobes, including a reminder of why yo
 To change a fragrance, open it (click the bottle) and press **Edit**. **Use my own photo** replaces the picture with a
 file of yours (a plain white background is made transparent). **Delete** removes the fragrance and its history after
 a confirmation.
+
+## Browse: look something up without adding it
+
+**Browse** (left bar, or **Ctrl+F** / **Command+F** from any page other than the wardrobes) searches your library and the imported dataset as you type, or reads one Fragrantica page when you paste its link and press **Look up this page**. Pick a result to see its notes pyramid, accords, community charts, its picture and **Similar to what I own** (the fragrances in your collection with the most accords and notes in common).
+
+Every result says where it comes from: **In my library** (with its wardrobe), **From the imported dataset**, or **Live from Fragrantica (not saved)**. Nothing is saved while you browse, and closing the view leaves nothing behind: no fragrance, picture or setting. **Add to a wardrobe…** opens the normal Add fragrance form with everything filled in, so the usual rules apply (for example the wishlist note), and the fragrance is only created when you confirm. A live page is loaded one at a time and only the page you pasted; it takes a few seconds.
 
 ## The five wardrobes
 

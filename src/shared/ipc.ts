@@ -107,6 +107,10 @@ export interface Api {
     notes(): Promise<CatalogItem[]>
     accords(): Promise<CatalogItem[]>
   }
+  browse: {
+    /** A remote picture (Fragrantica hosts only) as a data URL, for looking at without saving anything. Null if unavailable. */
+    previewImage(url: string): Promise<string | null>
+  }
   search: {
     /** Fuzzy search over my fragrances and the imported dataset. */
     local(query: string): Promise<LocalHit[]>

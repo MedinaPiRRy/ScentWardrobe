@@ -14,7 +14,7 @@ import { isTrustedSender } from './security'
 import { dismissRatingSuggestion, listRatingSuggestions } from './db/ratings'
 import { buildPreview, parseListText, previewItems } from './fragrantica/memberParser'
 import { existingFragrances, runMemberImport } from './fragrantica/memberRun'
-import { importLocalImage, pickImageFile, readImageDataUrl, reportImageFailure, resolveRemoteImages } from './images'
+import { importLocalImage, pickImageFile, previewRemoteImage, readImageDataUrl, reportImageFailure, resolveRemoteImages } from './images'
 import {
   setImagePath,
   addBottle,
@@ -110,6 +110,7 @@ export function registerIpc(db: Db, dbPath: string): void {
     'wardrobe:pastBottles': () => listPastBottles(db),
     'wardrobe:reorder': (w: WardrobeKind, ids: number[]) => reorderWardrobe(db, w, ids),
     'search:local': (q: string) => searchLocal(db, q),
+    'browse:previewImage': (url: string) => previewRemoteImage(String(url)),
     'search:datasetEntry': (id: number) => datasetEntry(db, id),
     'search:datasetInfo': () => ({ count: datasetCount(db) }),
     'importer:pickFile': async () => {

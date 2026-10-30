@@ -221,6 +221,85 @@ try {
     check('no rating suggestions for brand new fragrances', (await app.ev(`!document.querySelector('[aria-label="Rating suggestions"]')`)) === true)
   }
 
+  if (phase(4)) {
+    console.log('--- Phase 4: Browse')
+    // a tiny dataset to search (the real one is far too big to ship)
+    const { writeFileSync, mkdtempSync, readdirSync } = await import('node:fs')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const csv = join(mkdtempSync(join(tmpdir(), 'scent-e2e-ds-')), 'tiny.csv')
+    writeFileSync(csv, 'name,brand,year,accords,notes_top\nBrowse Test Aoud,Dataset House,2019,woody:100|amber:70,Cedar|Vanilla\nOther Thing,Dataset House,2020,citrus:100,Lemon\n')
+    const an = await j(`window.api.importer.analyze(${JSON.stringify(csv)})`)
+    await j(`window.api.importer.run(${JSON.stringify(csv)}, null, ${JSON.stringify(an.ok ? an.data.suggested : {})}, false)`)
+    await j('window.api.dev.seedSampleData()')
+    await app.reload()
+    const before = { frags: (await j('window.api.fragrances.list()')).length, images: readdirSync(join(app.dir, 'images')).length }
+    const searchSel = 'input[aria-label^="Search fragrances"]'
+
+    await app.go('#/browse')
+    await sleep(900)
+    check('Browse is in the sidebar and opens', (await app.text()).includes('Look up any fragrance without adding it'))
+    await app.type(searchSel, 'browse test')
+    await sleep(800)
+    check('a dataset result appears with its source label', /Dataset/.test(await app.text()) && /Browse Test Aoud/.test(await app.text()))
+    await app.clickStartsWith('Browse Test Aoud', 'section[aria-label=Results] button')
+    await sleep(900)
+    const badge = await app.ev(`document.querySelector('[data-testid=source-badge]')?.textContent`)
+    check('the detail view says it comes from the dataset', /dataset/i.test(badge ?? ''), String(badge))
+    check('notes, accords and the similar-to-mine section are shown', (await app.text()).includes('Cedar') && (await app.text()).includes('Main accords') && (await app.text()).includes('Similar to what I own'))
+    await app.type(searchSel, 'sauvage')
+    await sleep(800)
+    await app.clickStartsWith('Sauvage', 'section[aria-label=Results] button')
+    await sleep(900)
+    const libBadge = await app.ev(`document.querySelector('[data-testid=source-badge]')?.textContent`)
+    check('a library result is labelled as in my library', /In my library/.test(libBadge ?? ''), String(libBadge) + ' | ' + (await app.ev(`[...document.querySelectorAll('section[aria-label=Results] button')].map((b) => b.textContent.trim()).join(' | ')`)))
+    await app.clickText('Close')
+    await sleep(300)
+    const after = { frags: (await j('window.api.fragrances.list()')).length, images: readdirSync(join(app.dir, 'images')).length }
+    check('browsing and closing leaves nothing behind (no rows, no images)', after.frags === before.frags && after.images === before.images, JSON.stringify({ before, after }))
+
+    // add from Browse reuses the add form and its rules
+    await app.type(searchSel, 'browse test')
+    await sleep(800)
+    await app.clickStartsWith('Browse Test Aoud', 'section[aria-label=Results] button')
+    await sleep(700)
+    await app.clickText('Add to a wardrobe…')
+    await sleep(800)
+    check('Add to a wardrobe opens the normal add form, prefilled', await app.ev(`[...document.querySelectorAll('[role=dialog] input')].some((i) => i.value === 'Browse Test Aoud')`))
+    await app.ev(`(() => { const b = [...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.trim() === 'Wishlist'); b && b.click() })()`)
+    await sleep(300)
+    await app.clickText('Add fragrance', '[role=dialog] button')
+    await sleep(800)
+    check('the wishlist rule still applies from Browse', /smells like to you/i.test(await app.text()))
+    await app.ev(`(() => { const t = [...document.querySelectorAll('[role=dialog] textarea')].find((x) => /smell/i.test((x.placeholder ?? '') + (x.closest('label')?.textContent ?? '') + (x.closest('div')?.textContent ?? '').slice(0, 200))); if (!t) return false; const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(t, 'warm cedar and vanilla'); t.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
+    await app.clickText('Add fragrance', '[role=dialog] button')
+    await sleep(1200)
+    const list2 = await j('window.api.fragrances.list()')
+    check('it was saved only after I confirmed', list2.some((x) => x.name === 'Browse Test Aoud' && x.wardrobe === 'wishlist'))
+
+    // Ctrl+F outside the wardrobes goes to Browse
+    await app.go('#/stats')
+    await sleep(500)
+    await app.key('f', { ctrl: true })
+    await sleep(800)
+    check('Ctrl+F outside the wardrobes opens Browse', (await app.text()).includes('Look up any fragrance without adding it'))
+
+    // a pasted link: live page, read-only, not saved
+    const probe = await j(`window.api.fragrantica.importUrl('https://fragrantica.evil.com/perfume/A/B-1.html')`)
+    check('a look-alike link is refused', probe.ok === false)
+    await app.type(searchSel, 'https://www.fragrantica.com/perfume/Dior/Sauvage-31861.html')
+    await sleep(500)
+    check('a pasted Fragrantica link offers to look the page up', await app.clickText('Look up this page'))
+    await sleep(15000)
+    const liveBadge = await app.ev(`document.querySelector('[data-testid=source-badge]')?.textContent`)
+    check('the live page opens read-only and is labelled as not saved', /Live from Fragrantica \(not saved\)/.test(liveBadge ?? ''), String(liveBadge))
+    check('its picture is shown without being stored', (await app.ev(`!!document.querySelector('article img')`)) === true)
+    await app.clickText('Close')
+    await sleep(300)
+    const final = { frags: (await j('window.api.fragrances.list()')).length, images: readdirSync(join(app.dir, 'images')).length }
+    check('closing the live page leaves nothing behind', final.frags === before.frags + 1 && final.images === before.images, JSON.stringify({ before, final }))
+  }
+
   check('no console errors', app.logs.errors.length === 0, app.logs.errors.slice(0, 3).join(' | '))
   check('no unhandled exceptions', app.logs.exceptions.length === 0, app.logs.exceptions.slice(0, 3).join(' | '))
 } catch (e) {
