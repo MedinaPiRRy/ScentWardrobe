@@ -58,7 +58,7 @@ Press **+ Add fragrance** (or Ctrl+N). Three ways:
    site asks for a human check, a window appears for you to complete it.
 3. **By hand.** Choose **Enter manually** and fill in the form.
 
-In the form, choose where it goes (**My Collection** needs a bottle type and size) and save. Searching also shows
+In the form, choose where it goes (**My Collection** needs a bottle type and size, and has optional **Price paid**, **Where bought** and **Purchase date**) and save. Searching also shows
 fragrances you already have in *other* wardrobes, including a reminder of why you put something in Garbage Perfumes.
 
 To change a fragrance, open it (click the bottle) and press **Edit**. **Use my own photo** replaces the picture with a
@@ -143,7 +143,9 @@ bottles running low, and what each fragrance costs per wear. Only collection fra
 
 ## Prices and currency
 
-In a bottle's form, **Price paid** is what you paid. Under **Market price today** you can type what it costs now, when
+**Price paid** is what you paid. You can enter it when you add the fragrance to your collection, in the bottle's form, or later: any bottle without a price (for example the 100 ml placeholder an import creates) shows an **Add price** link in its detail view. A decant or sample has its own price.
+
+In a bottle's form, Under **Market price today** you can type what it costs now, when
 you checked and where. **The app never looks prices up** for you. The bottle then shows both prices, the price per ml
 and a *Saved* or *Overpaid* tag with the amount and percentage. **Stats** adds the collection's market value, the total
 saved or overpaid, a paid-versus-market table and the cost per wear.

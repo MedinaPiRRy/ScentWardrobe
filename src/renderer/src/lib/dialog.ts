@@ -49,7 +49,10 @@ export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true, 
     const items = () => [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null || el === document.activeElement)
     // Small forms start in their first field; a long panel starts on the panel itself so nothing scrolls away.
     const first = focusFirstField ? (root.querySelector<HTMLElement>('[autofocus], input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea, select') ?? items()[0]) : null
-    if (first) first.focus({ preventScroll: true })
+    // A field that asked for focus itself (autoFocus) keeps it.
+    if (document.activeElement && document.activeElement !== root && root.contains(document.activeElement)) {
+      /* already focused inside */
+    } else if (first) first.focus({ preventScroll: true })
     else {
       root.tabIndex = -1
       root.focus({ preventScroll: true })
