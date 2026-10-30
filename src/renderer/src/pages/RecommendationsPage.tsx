@@ -49,9 +49,9 @@ type WeatherState = { status: 'loading' } | { status: 'ok'; reading: WeatherRead
 function ScoreBadge({ score }: { score: number }) {
   const color = score >= 75 ? '#7fd18f' : score >= 55 ? '#e0b24f' : '#e07a6a'
   return (
-    <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-full border-2" style={{ borderColor: color, color }} title="Match score out of 100">
+    <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-full border-2 text-cream" style={{ borderColor: color }} title="Match score out of 100">
       <span className="font-display text-xl leading-none">{score}</span>
-      <span className="text-[8px] uppercase tracking-wider opacity-70">match</span>
+      <span className="text-[8px] uppercase tracking-wider text-cream/70">match</span>
     </div>
   )
 }

@@ -15,7 +15,7 @@ export default function RatingPicker({ value, onChange, size = 'md', label = 'Ra
           aria-label={`${n} out of 10`}
           title={value === n ? 'Click again to clear' : `${n}/10`}
           onClick={() => onChange(value === n ? null : n)}
-          className={`${dims} rounded font-medium ${value != null && n <= value ? 'bg-brass-500 text-[#17110b]' : 'bg-ink-900 text-cream/70 hover:bg-ink-600'} ${value === n ? 'ring-2 ring-brass-400' : ''}`}
+          className={`${dims} rounded font-medium ${value != null && n <= value ? 'bg-brass-500 text-[#17110b]' : 'border border-cream/40 bg-ink-900 text-cream/70 hover:bg-ink-600'} ${value === n ? 'ring-2 ring-brass-400' : ''}`}
         >
           {n}
         </button>

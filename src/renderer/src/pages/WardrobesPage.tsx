@@ -327,7 +327,7 @@ export default function WardrobesPage() {
               onClick={() => setTab(k)}
               className={`rounded-md px-4 py-2 text-sm transition-colors ${tab === k ? 'bg-ink-600 text-brass-400' : 'text-cream/70 hover:text-cream'}`}
             >
-              {WARDROBE_LABEL[k]} <span className="ml-1 text-xs opacity-60">{counts[k]}</span>
+              {WARDROBE_LABEL[k]} <span className="ml-1 text-xs text-cream/70">{counts[k]}</span>
             </button>
           ))}
         </div>

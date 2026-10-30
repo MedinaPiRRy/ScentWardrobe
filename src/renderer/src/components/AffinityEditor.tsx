@@ -6,7 +6,6 @@ const SETTING = 'layering.affinity'
 const field = 'rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-sm text-cream'
 
 const label = (v: number) => (v >= 0.6 ? 'works great' : v >= 0.25 ? 'works well' : v > -0.25 ? 'neutral' : v > -0.6 ? 'tends to clash' : 'clashes')
-const color = (v: number) => (v > 0.1 ? '#7fd18f' : v < -0.1 ? '#e07a6a' : '#9a9082')
 
 /** Edit how well accords sit together. Changes save as you go and feed the Layering Lab and the recommendations. */
 export default function AffinityEditor() {
@@ -108,7 +107,7 @@ export default function AffinityEditor() {
           <input list="affinity-accords" value={b} onChange={(e) => setB(e.target.value)} className={`${field} mt-1 block w-40`} />
         </label>
         <label className="text-xs text-cream/60">
-          Affinity <span style={{ color: color(v) }}>{v.toFixed(2)}</span>
+          Affinity <span className="text-cream">{v.toFixed(2)}</span>
           <input type="range" min={-1} max={1} step={0.05} value={v} onChange={(e) => setV(+e.target.value)} className="mt-2 block w-40 accent-[#c4964a]" />
         </label>
         <button className={primaryBtn} onClick={add}>
@@ -138,7 +137,7 @@ export default function AffinityEditor() {
                   className="flex-1 accent-[#c4964a]"
                   aria-label={`Affinity of ${r.x} with ${r.y}`}
                 />
-                <span className="w-12 text-right tabular-nums" style={{ color: color(r.value) }}>
+                <span className="w-12 text-right tabular-nums text-cream">
                   {r.value > 0 ? '+' : ''}
                   {r.value.toFixed(2)}
                 </span>
