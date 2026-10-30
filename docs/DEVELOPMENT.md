@@ -24,7 +24,7 @@ app complain about `better-sqlite3` after switching Node or Electron versions, r
 
 | Path | What lives there |
 | --- | --- |
-| `src/main/db/` | SQLite: `migrations.ts`, `repo.ts` (reads and wardrobe moves), `editing.ts`, `wears.ts`, `stats.ts`, `exportCsv.ts`, `seed.ts` |
+| `src/main/db/` | SQLite: `migrations.ts`, `repo.ts` (reads), `memberships.ts` (add, move and remove wardrobes), `ratings.ts`, `editing.ts`, `wears.ts`, `stats.ts`, `exportCsv.ts`, `seed.ts` |
 | `src/main/data/` | dataset import (CSV, JSONL, SQLite sources), column mapping, fuzzy search |
 | `src/main/fragrantica/` | single-page importer, profile importer, parsers and the locked-down scrape window |
 | `src/main/` | `ipc.ts` (every handler), `backup*.ts`, `images.ts`, `security.ts`, `windowState.ts`, `weather*.ts` |

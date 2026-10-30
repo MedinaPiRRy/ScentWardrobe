@@ -30,6 +30,7 @@ smells like to me" text) stays on the fragrance. Everything that belongs to *bei
 | each `wardrobe_items` row | exactly one `wardrobe_memberships` row with the same shelf position, added date, desired size, imported flag, dislike note and Had details |
 | `wardrobe_items.rating` | `fragrances.rating` (rating history is untouched) |
 | the four wishlist triggers | the same four rules on `wardrobe_memberships` (wishlist membership needs the note unless `imported = 1`) |
+| why I disliked it / my Had memories of a wardrobe I leave | kept in `membership_memory` (a new table) and restored if the fragrance returns to that wardrobe |
 | bottles, wears, journal, `past_bottles`, `rating_history`, foreign flags | unchanged |
 
 Nothing is lost: the migration test builds a library at every earlier version, upgrades it and checks every field.

@@ -15,7 +15,7 @@ export default function UsualSpraysDialog({ onClose, onSaved }: { onClose: () =>
 
   useEffect(() => {
     void window.api.fragrances.list().then((all) => {
-      const mine = all.filter((f) => f.wardrobe === 'collection' || f.wardrobe === 'had')
+      const mine = all.filter((f) => f.wardrobes.includes('collection') || f.wardrobes.includes('had'))
       setRows(mine)
       setValues(Object.fromEntries(mine.map((f) => [f.id, f.defaultSprays != null ? String(f.defaultSprays) : ''])))
     })
@@ -74,7 +74,7 @@ export default function UsualSpraysDialog({ onClose, onSaved }: { onClose: () =>
                   <div className="truncate">{f.name}</div>
                   <div className="truncate text-xs text-cream/45">
                     {f.house}
-                    {f.wardrobe === 'had' && ' · Had'}
+                    {!f.wardrobes.includes('collection') && f.wardrobes.includes('had') && ' · Had'}
                   </div>
                 </div>
                 <input

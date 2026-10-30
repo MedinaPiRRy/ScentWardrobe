@@ -61,9 +61,11 @@ try {
   const w = await api(app, `window.api.wears.log({ fragranceId: ${id}, wornAt: '${new Date().toISOString().slice(0, 10)} 09:00', sprays: 4 })`)
   check('log a wear', w.ok)
   const moves = [['wishlist', { impression: 'smoky and warm' }], ['to_try', {}], ['had', {}], ['garbage', { dislikeNote: 'too sweet' }], ['collection', { bottle: { type: 'full bottle', sizeMl: 30 } }]]
+  let prev = 'collection'
   for (const [to, extra] of moves) {
-    const r = await api(app, `window.api.wardrobe.move({ fragranceId: ${id}, to: ${JSON.stringify(to)}, ...${JSON.stringify(extra)} })`)
-    check(`move to ${to}`, r.ok && r.data.wardrobe === to, r.ok ? '' : r.message)
+    const r = await api(app, `window.api.wardrobe.move({ fragranceId: ${id}, from: ${JSON.stringify(prev)}, to: ${JSON.stringify(to)}, ...${JSON.stringify(extra)} })`)
+    check(`move to ${to}`, r.ok && r.data.wardrobe === to && r.data.wardrobes.length === 1, r.ok ? '' : r.message)
+    prev = to
   }
   const detail = await api(app, `window.api.fragrances.get(${id})`)
   check('wear history survives the moves', detail.wearCount === undefined ? true : detail.wearCount === 1)

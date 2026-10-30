@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FragranceInput, LocalHit } from '@shared/types'
-import { WARDROBE_LABEL } from '../lib/shelf'
+import { wardrobeList } from '../lib/shelf'
 import { ghostBtn, Modal, primaryBtn } from './Dialogs'
 
 interface Props {
@@ -78,10 +78,10 @@ export default function AddFragranceDialog({ onClose, onOpenMine, onPrefill, onI
                 <span>
                   <span className="font-medium">{h.name}</span> <span className="text-cream/60">{h.house}</span>
                   {(h.year || h.concentration) && <span className="ml-2 text-xs text-cream/40">{[h.year, h.concentration].filter(Boolean).join(' · ')}</span>}
-                  {h.wardrobe === 'garbage' && <span className="mt-0.5 block text-xs italic text-red-300">You disliked this{h.dislikeNote ? `: “${h.dislikeNote}”` : ''}</span>}
+                  {h.wardrobes.includes('garbage') && <span className="mt-0.5 block text-xs italic text-red-300">You disliked this{h.dislikeNote ? `: “${h.dislikeNote}”` : ''}</span>}
                 </span>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase ${h.wardrobe === 'garbage' ? 'bg-red-900/60 text-red-200' : h.source === 'mine' ? 'bg-brass-500/25 text-brass-400' : 'bg-ink-600 text-cream/70'}`}>
-                  {h.source === 'mine' ? `${h.wardrobe === 'garbage' ? 'In the bin' : 'Already in'} ${h.wardrobe === 'garbage' ? '⚠' : h.wardrobe ? WARDROBE_LABEL[h.wardrobe] : 'library'}` : 'Dataset'}
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase ${h.wardrobes.includes('garbage') ? 'bg-red-900/60 text-red-200' : h.source === 'mine' ? 'bg-brass-500/25 text-brass-400' : 'bg-ink-600 text-cream/70'}`}>
+                  {h.source === 'mine' ? (h.wardrobes.includes('garbage') ? 'In the bin ⚠' : `Already in ${h.wardrobes.length ? wardrobeList(h.wardrobes) : 'library'}`) : 'Dataset'}
                 </span>
               </button>
             ))

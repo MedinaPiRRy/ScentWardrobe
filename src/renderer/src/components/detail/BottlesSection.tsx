@@ -182,7 +182,7 @@ export default function BottlesSection({ d, onChanged, onNoBottlesLeft, say }: {
   /** After a bottle left: if nothing is in use any more, suggest moving the fragrance to Had. */
   const offerHadIfLast = async (reason: HadReason) => {
     const fresh = await window.api.fragrances.get(d.id)
-    if (fresh && fresh.wardrobe === 'collection' && fresh.bottles.every((b) => b.status !== 'active')) onNoBottlesLeft(reason)
+    if (fresh && fresh.wardrobes.includes('collection') && fresh.bottles.every((b) => b.status !== 'active')) onNoBottlesLeft(reason)
   }
 
   const markEmpty = async (b: Bottle) => {
@@ -246,7 +246,7 @@ export default function BottlesSection({ d, onChanged, onNoBottlesLeft, say }: {
         + Add bottle
       </button>
       <p className="mt-1 text-[11px] text-cream/35">Low-level warning appears under {Math.round(LOW_LEVEL_THRESHOLD * 100)}%.</p>
-      {editing && <BottleFormDialog focusPrice={focusPrice} vial={d.wardrobe !== 'collection'} bottle={editing === 'new' ? null : editing} error={error} onCancel={() => setEditing(null)} onSubmit={save} />}
+      {editing && <BottleFormDialog focusPrice={focusPrice} vial={!d.wardrobes.includes('collection')} bottle={editing === 'new' ? null : editing} error={error} onCancel={() => setEditing(null)} onSubmit={save} />}
     </div>
   )
 }

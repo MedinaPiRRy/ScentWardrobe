@@ -18,7 +18,7 @@ export function ImpressionEditor({ d, onChanged }: { d: FragranceDetail; onChang
   return (
     <div>
       <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="What it smells like to me…" className={area} />
-      {d.wardrobe === 'wishlist' && <p className="text-[11px] text-cream/40">Required for wishlist items.</p>}
+      {d.wardrobes.includes('wishlist') && <p className="text-[11px] text-cream/40">Required for wishlist items.</p>}
       {error && <p className="text-sm text-red-300" role="alert">{error}</p>}
       {dirty && (
         <div className="mt-1 flex gap-2">

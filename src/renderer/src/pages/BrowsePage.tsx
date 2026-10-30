@@ -10,7 +10,7 @@ import AccordBars from '../components/detail/AccordBars'
 import CommunityCharts from '../components/detail/CommunityCharts'
 import NotesPyramid from '../components/detail/NotesPyramid'
 import { hasMod } from '../lib/platform'
-import { WARDROBE_LABEL } from '../lib/shelf'
+import { wardrobeList } from '../lib/shelf'
 
 type Source = 'mine' | 'dataset' | 'web'
 
@@ -104,7 +104,7 @@ export default function BrowsePage() {
       name: d.name, house: d.house, year: d.year, concentration: d.concentration, perfumers: d.perfumers, gender: d.gender, description: d.description,
       imagePath: d.imagePath, notes: d.notes.map((n) => ({ name: n.name, layer: n.layer })), accords: d.accords.map((a) => ({ name: a.name, strength: a.strength, color: a.color })), community: d.community
     }
-    void show({ source: 'mine', id: d.id, wardrobeLabel: d.wardrobe ? WARDROBE_LABEL[d.wardrobe] : d.isForeign ? 'Not mine' : undefined, input, community: d.community, note: d.dislikeNote ?? undefined })
+    void show({ source: 'mine', id: d.id, wardrobeLabel: d.wardrobes.length ? wardrobeList(d.wardrobes) : d.isForeign ? 'Not mine' : undefined, input, community: d.community, note: d.dislikeNote ?? undefined })
   }
 
   const loadLink = async (e: React.FormEvent) => {
@@ -185,7 +185,7 @@ export default function BrowsePage() {
                       <span className="block truncate text-xs text-cream/60">{[h.house, h.year, h.concentration].filter(Boolean).join(' · ')}</span>
                     </span>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase ${h.source === 'mine' ? SOURCE_BADGE.mine.tone : SOURCE_BADGE.dataset.tone}`}>
-                      {h.source === 'mine' ? (h.wardrobe ? WARDROBE_LABEL[h.wardrobe] : 'Library') : 'Dataset'}
+                      {h.source === 'mine' ? (h.wardrobes.length ? wardrobeList(h.wardrobes) : 'Library') : 'Dataset'}
                     </span>
                   </button>
                 </li>

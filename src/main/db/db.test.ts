@@ -47,7 +47,7 @@ describe('wishlist rule', () => {
   const setup = () => {
     const db = fresh()
     seedSampleData(db)
-    const toTry = listFragrances(db, { wardrobe: 'to_try' })[0]
+    const toTry = listFragrances(db, { wardrobe: 'to_try' }).find((f) => f.wardrobes.length === 1)!
     return { db, toTry }
   }
 
@@ -64,7 +64,7 @@ describe('wishlist rule', () => {
     const { db, toTry } = setup()
     const r = moveToWardrobe(db, { fragranceId: toTry.id, to: 'wishlist', impression: 'Warm and boozy.' })
     expect(r.ok && r.data.wardrobe).toBe('wishlist')
-    const back = moveToWardrobe(db, { fragranceId: toTry.id, to: 'to_try' })
+    const back = moveToWardrobe(db, { fragranceId: toTry.id, from: 'wishlist', to: 'to_try' })
     expect(back.ok).toBe(true)
     expect(getFragrance(db, toTry.id)!.impression).toBe('Warm and boozy.')
   })

@@ -58,7 +58,7 @@ export default function CalendarPage() {
   const byDay = useMemo(() => groupByDay(wears), [wears])
   const periodWears = useMemo(() => (view === 'month' ? wears.filter((w) => w.wornAt.slice(0, 7) === `${year}-${String(month0 + 1).padStart(2, '0')}`) : wears), [wears, view, year, month0])
   const usage = useMemo(() => usageCounts(periodWears), [periodWears])
-  const missingSprays = useMemo(() => [...fragrances.values()].filter((f) => f.wardrobe === 'collection' && f.defaultSprays == null).length, [fragrances])
+  const missingSprays = useMemo(() => [...fragrances.values()].filter((f) => f.wardrobes.includes('collection') && f.defaultSprays == null).length, [fragrances])
   const todayKey = dateKeyOf(new Date())
 
   const go = (by: number) => {

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { DbInfo, WearEntry, FragranceDetail, FragranceInput, FragranceSummary, HadReason, MoveRequest, PastBottle, Placement, Season, WardrobeKind } from '@shared/types'
 import ContextMenu, { type MenuItem } from '../components/ContextMenu'
-import { BottleDialog, ghostBtn, ImpressionDialog, primaryBtn } from '../components/Dialogs'
+import { BottleDialog, ghostBtn, ImpressionDialog, Modal, primaryBtn } from '../components/Dialogs'
 import DetailPanel from '../components/detail/DetailPanel'
 import AddFragranceDialog from '../components/AddFragranceDialog'
 import FragranceForm from '../components/FragranceForm'
@@ -18,6 +18,7 @@ import Shelf from '../components/Shelf'
 import { THEMES } from '../components/themes'
 import {
   filterFragrances,
+  isIn,
   isRackItem,
   RATING_FILTER_LABEL,
   SEASONS,
@@ -27,16 +28,19 @@ import {
   WARDROBE_LABEL,
   WARDROBES,
   type RatingFilter,
-  type SortKey
+  type SortKey,
+  viewIn,
+  wardrobeList
 } from '../lib/shelf'
 
 const KINDS = WARDROBES
 
+/** `from` is the wardrobe being left when this is a move; without it the wardrobe is simply added. */
 type Pending =
-  | { kind: 'impression'; f: FragranceSummary; initial: string; size: number | null }
-  | { kind: 'bottle'; f: FragranceSummary }
-  | { kind: 'garbage'; f: FragranceSummary }
-  | { kind: 'had'; f: FragranceSummary }
+  | { kind: 'impression'; f: FragranceSummary; initial: string; size: number | null; from?: WardrobeKind }
+  | { kind: 'bottle'; f: FragranceSummary; from?: WardrobeKind }
+  | { kind: 'garbage'; f: FragranceSummary; from?: WardrobeKind }
+  | { kind: 'had'; f: FragranceSummary; from?: WardrobeKind }
   | { kind: 'offerHad'; f: FragranceSummary; reason: HadReason }
 
 export default function WardrobesPage() {
@@ -48,6 +52,8 @@ export default function WardrobesPage() {
   const [season, setSeason] = useState<Season | 'all'>('all')
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>('all')
   const [rateFor, setRateFor] = useState<FragranceSummary | null>(null)
+  /** A move or add refused because Garbage Perfumes cannot be combined with other wardrobes, waiting for my confirmation. */
+  const [conflict, setConflict] = useState<{ req: MoveRequest; name: string; message: string } | null>(null)
   const [sort, setSort] = useState<SortKey>('shelf')
   const [menu, setMenu] = useState<{ f: FragranceSummary; x: number; y: number } | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
@@ -122,14 +128,15 @@ export default function WardrobesPage() {
     }
   }, [params, setParams])
 
-  const inTab = useMemo(() => sortFragrances(all.filter((f) => f.wardrobe === tab), 'shelf'), [all, tab])
+  // A fragrance in several wardrobes appears on each of their shelves, with that shelf's own position and notes.
+  const inTab = useMemo(() => sortFragrances(all.filter((f) => isIn(f, tab)).map((f) => viewIn(f, tab)), 'shelf'), [all, tab])
   const filtering = query.trim() !== '' || season !== 'all' || ratingFilter !== 'all'
   const visible = useMemo(() => sortFragrances(filterFragrances(inTab, query, season, ratingFilter), sort), [inTab, query, season, ratingFilter, sort])
   const canDrag = !filtering && sort === 'shelf'
 
   const counts = useMemo(() => {
     const c: Record<WardrobeKind, number> = { collection: 0, wishlist: 0, to_try: 0, had: 0, garbage: 0 }
-    for (const f of all) if (f.wardrobe) c[f.wardrobe]++
+    for (const f of all) for (const w of f.wardrobes) c[w]++
     return c
   }, [all])
 
@@ -139,7 +146,7 @@ export default function WardrobesPage() {
     for (const p of pastBottles) byFragrance.set(p.fragranceId, [...(byFragrance.get(p.fragranceId) ?? []), p])
     return [...byFragrance.entries()]
       .map(([id, list]) => ({ f: all.find((x) => x.id === id), list }))
-      .filter((x): x is { f: FragranceSummary; list: PastBottle[] } => !!x.f && x.f.wardrobe !== null && x.f.wardrobe !== 'had')
+      .filter((x): x is { f: FragranceSummary; list: PastBottle[] } => !!x.f && x.f.wardrobes.length > 0 && !x.f.wardrobes.includes('had'))
   }, [pastBottles, all])
 
   const hadVisible = useMemo(() => {
@@ -161,7 +168,7 @@ export default function WardrobesPage() {
 
   // Matches in the other wardrobes, so a search never hides that something is already owned, wanted or disliked.
   const elsewhere = useMemo(
-    () => (query.trim() ? filterFragrances(all.filter((f) => f.wardrobe && f.wardrobe !== tab), query, 'all').slice(0, 8) : []),
+    () => (query.trim() ? filterFragrances(all.filter((f) => f.wardrobes.length > 0 && !f.wardrobes.includes(tab)), query, 'all').slice(0, 8) : []),
     [all, query, tab]
   )
 
@@ -171,15 +178,15 @@ export default function WardrobesPage() {
   const rack = useMemo(() => {
     if (tab !== 'collection') return []
     const isVial = (b: { type: string }) => b.type === 'decant' || b.type === 'sample'
-    const holders = all.filter((f) => (f.wardrobe === 'collection' || f.wardrobe === 'wishlist' || f.wardrobe === 'to_try') && f.bottles.some(isVial))
-    const rank = (f: FragranceSummary) => (f.wardrobe === 'collection' ? 0 : 1)
+    const holders = all.filter((f) => f.wardrobes.some((w) => w === 'collection' || w === 'wishlist' || w === 'to_try') && f.bottles.some(isVial))
+    const rank = (f: FragranceSummary) => (f.wardrobes.includes('collection') ? 0 : 1)
     return sortFragrances(filterFragrances(holders, query, season, ratingFilter), 'name')
       .sort((a, b) => rank(a) - rank(b))
       .map((f) => ({ ...f, bottles: f.bottles.filter(isVial) }))
   }, [tab, all, query, season, ratingFilter])
   const vialCaptions = useMemo(() => {
     const m = new Map<number, string>()
-    for (const f of rack) if (f.wardrobe !== 'collection' && f.wardrobe) m.set(f.id, `on my ${WARDROBE_LABEL[f.wardrobe]}`)
+    for (const f of rack) if (!f.wardrobes.includes('collection') && f.wardrobe) m.set(f.id, `on my ${WARDROBE_LABEL[f.wardrobe]}`)
     return m
   }, [rack])
 
@@ -193,40 +200,57 @@ export default function WardrobesPage() {
     const fullRack = inTab.filter((f) => tab === 'collection' && isRackItem(f)).map((f) => f.id)
     const ownIds = tab === 'had' ? ids.filter((id) => hadIds.has(id)) : ids
     const order = section === 'main' ? [...ownIds, ...fullRack] : [...fullMain, ...ownIds]
-    setAll((prev) => prev.map((f) => (f.wardrobe === tab ? { ...f, shelfPosition: order.indexOf(f.id) } : f)))
+    setAll((prev) => prev.map((f) => (isIn(f, tab) ? { ...f, memberships: f.memberships.map((m) => (m.wardrobe === tab ? { ...m, shelfPosition: order.indexOf(f.id) } : m)) } : f)))
     const r = await window.api.wardrobe.reorder(tab, order)
     if (!r.ok) say(r.message)
     void refresh()
   }
 
-  // ---- moving between wardrobes -----------------------------------------------------
+  // ---- adding to and moving between wardrobes ---------------------------------------
   const submitMove = async (req: MoveRequest, name: string) => {
     const r = await window.api.wardrobe.move(req)
     if (!r.ok) {
+      if (r.code === 'GARBAGE_CONFLICT') {
+        // Garbage Perfumes cannot be combined with other wardrobes: ask before taking the others away.
+        setPending(null)
+        setConflict({ req, name, message: r.message })
+        return
+      }
       setDialogError(r.message)
       if (!pending) say(r.message)
       return
     }
     setPending(null)
+    setConflict(null)
     setDialogError(null)
-    say(`${name} moved to ${WARDROBE_LABEL[req.to]}.`)
+    say(`${name} ${req.from ? 'moved' : 'added'} to ${WARDROBE_LABEL[req.to]}.`)
     await refresh()
   }
 
-  const startMove = async (f: FragranceSummary, to: WardrobeKind) => {
+  /** Adds `to` next to the wardrobes the fragrance is in, or (with `from`) moves it from one to the other. */
+  const startMove = async (f: FragranceSummary, to: WardrobeKind, from?: WardrobeKind) => {
     setDialogError(null)
+    const base = (extra: Partial<MoveRequest> = {}): MoveRequest => ({ fragranceId: f.id, to, ...(from ? { from } : {}), ...extra })
+    void base
     if (to === 'wishlist') {
       const d = await window.api.fragrances.get(f.id)
-      setPending({ kind: 'impression', f, initial: d?.impression ?? '', size: f.desiredSizeMl })
+      setPending({ kind: 'impression', f, initial: d?.impression ?? '', size: f.desiredSizeMl, from })
     } else if (to === 'garbage') {
-      setPending({ kind: 'garbage', f })
+      setPending({ kind: 'garbage', f, from })
     } else if (to === 'had') {
-      setPending({ kind: 'had', f })
+      setPending({ kind: 'had', f, from })
     } else if (to === 'collection' && f.activeBottleCount === 0) {
-      setPending({ kind: 'bottle', f })
+      setPending({ kind: 'bottle', f, from })
     } else {
-      await submitMove({ fragranceId: f.id, to }, f.name)
+      await submitMove(base(), f.name)
     }
+  }
+
+  const removeFrom = async (f: FragranceSummary, w: WardrobeKind) => {
+    const r = await window.api.wardrobe.remove(f.id, w)
+    if (!r.ok) return say(r.message)
+    say(`${f.name} removed from ${WARDROBE_LABEL[w]}.`)
+    await refresh()
   }
 
   const openDetail = (f: FragranceSummary) => setOpenId(f.id)
@@ -269,7 +293,15 @@ export default function WardrobesPage() {
     { label: 'Open', onSelect: () => openDetail(f) },
     { label: 'Log a wear', onSelect: () => setWearFor({ fragranceId: f.id }) },
     ...(f.wardrobe ? [{ label: f.rating != null ? `Rate… (now ${f.rating}/10)` : 'Rate…', onSelect: () => setRateFor(f) }] : []),
-    ...KINDS.filter((k) => k !== f.wardrobe).map((k) => ({ label: `Move to ${WARDROBE_LABEL[k]}`, onSelect: () => void startMove(f, k) }))
+    // Add to / Move to for wardrobes it is not in; Remove from for the ones it is in (while it has another).
+    ...KINDS.flatMap((k): MenuItem[] => {
+      if (f.wardrobes.includes(k)) return f.wardrobes.length > 1 ? [{ label: `Remove from ${WARDROBE_LABEL[k]}`, onSelect: () => void removeFrom(f, k) }] : []
+      const from = f.wardrobes.includes(tab) ? tab : (f.wardrobe ?? undefined)
+      return [
+        { label: `Add to ${WARDROBE_LABEL[k]}`, onSelect: () => void startMove(f, k) },
+        ...(from ? [{ label: `Move to ${WARDROBE_LABEL[k]}`, onSelect: () => void startMove(f, k, from) }] : [])
+      ]
+    })
   ]
 
   const shelfProps = {
@@ -343,12 +375,12 @@ export default function WardrobesPage() {
           {elsewhere.map((f) => (
             <button
               key={f.id}
-              onClick={() => setTab(f.wardrobe!)}
-              title={f.wardrobe === 'garbage' ? (f.dislikeNote ? `You disliked it: ${f.dislikeNote}` : 'You put this in the bin') : undefined}
-              className={`rounded-full border px-2.5 py-1 ${f.wardrobe === 'garbage' ? 'border-red-400/50 bg-red-950/40 text-red-200' : 'border-ink-600 bg-ink-800 text-cream/80 hover:border-brass-500/60'}`}
+              onClick={() => setTab(f.wardrobes[0])}
+              title={f.wardrobes.includes('garbage') ? (viewIn(f, 'garbage').dislikeNote ? `You disliked it: ${viewIn(f, 'garbage').dislikeNote}` : 'You put this in the bin') : undefined}
+              className={`rounded-full border px-2.5 py-1 ${f.wardrobes.includes('garbage') ? 'border-red-400/50 bg-red-950/40 text-red-200' : 'border-ink-600 bg-ink-800 text-cream/80 hover:border-brass-500/60'}`}
             >
-              {f.name} · {WARDROBE_LABEL[f.wardrobe!]}
-              {f.wardrobe === 'garbage' && ' ⚠'}
+              {f.name} · {wardrobeList(f.wardrobes)}
+              {f.wardrobes.includes('garbage') && ' ⚠'}
             </button>
           ))}
         </div>
@@ -428,7 +460,7 @@ export default function WardrobesPage() {
           initialSize={pending.size}
           serverError={dialogError}
           onCancel={() => setPending(null)}
-          onSubmit={(impression, desiredSizeMl) => void submitMove({ fragranceId: pending.f.id, to: 'wishlist', impression, desiredSizeMl }, pending.f.name)}
+          onSubmit={(impression, desiredSizeMl) => void submitMove({ fragranceId: pending.f.id, to: 'wishlist', ...(pending.from ? { from: pending.from } : {}), impression, desiredSizeMl }, pending.f.name)}
         />
       )}
       {pending?.kind === 'bottle' && (
@@ -436,7 +468,7 @@ export default function WardrobesPage() {
           fragrance={pending.f}
           serverError={dialogError}
           onCancel={() => setPending(null)}
-          onSubmit={(bottle) => void submitMove({ fragranceId: pending.f.id, to: 'collection', bottle }, pending.f.name)}
+          onSubmit={(bottle) => void submitMove({ fragranceId: pending.f.id, to: 'collection', ...(pending.from ? { from: pending.from } : {}), bottle }, pending.f.name)}
         />
       )}
       {pending?.kind === 'garbage' && (
@@ -444,25 +476,38 @@ export default function WardrobesPage() {
           fragrance={pending.f}
           initial={pending.f.dislikeNote ?? ''}
           onCancel={() => setPending(null)}
-          onSubmit={(note) => void submitMove({ fragranceId: pending.f.id, to: 'garbage', dislikeNote: note }, pending.f.name)}
+          onSubmit={(note) => void submitMove({ fragranceId: pending.f.id, to: 'garbage', ...(pending.from ? { from: pending.from } : {}), dislikeNote: note }, pending.f.name)}
         />
       )}
       {pending?.kind === 'had' && (
         <HadDialog
-          title={`Move ${pending.f.name} to Had`}
+          title={`${pending.from ? 'Move' : 'Add'} ${pending.f.name} ${pending.from ? 'to' : 'to'} Had`}
           intro="Keep it as a memory. Everything about it stays: notes, wears and journal."
           initial={{ years: pending.f.hadYears, memory: pending.f.hadMemory, reason: pending.f.hadReason }}
-          submitLabel="Move to Had"
+          submitLabel={pending.from ? 'Move to Had' : 'Add to Had'}
           onCancel={() => setPending(null)}
-          onSubmit={(had) => void submitMove({ fragranceId: pending.f.id, to: 'had', had }, pending.f.name)}
+          onSubmit={(had) => void submitMove({ fragranceId: pending.f.id, to: 'had', ...(pending.from ? { from: pending.from } : {}), had }, pending.f.name)}
         />
+      )}
+      {conflict && (
+        <Modal title="Garbage Perfumes is separate" onClose={() => setConflict(null)}>
+          <p className="text-sm text-cream/85">{conflict.message}</p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button className={ghostBtn} onClick={() => setConflict(null)}>
+              Cancel
+            </button>
+            <button className={primaryBtn} onClick={() => void submitMove({ ...conflict.req, confirmExclusive: true }, conflict.name)}>
+              Confirm
+            </button>
+          </div>
+        </Modal>
       )}
       {pending?.kind === 'offerHad' && (
         <OfferHadDialog
           fragrance={pending.f}
           reason={pending.reason}
           onNo={() => setPending(null)}
-          onYes={(reason) => setPending({ kind: 'had', f: { ...pending.f, hadReason: reason } })}
+          onYes={(reason) => setPending({ kind: 'had', f: { ...pending.f, hadReason: reason }, from: 'collection' })}
         />
       )}
       {openId != null && (
@@ -472,7 +517,8 @@ export default function WardrobesPage() {
           onClose={() => setOpenId(null)}
           onChanged={() => void refresh()}
           onEdit={(d) => setForm({ mode: 'edit', d })}
-          onMove={(f, to) => void startMove(f, to)}
+          onMove={(f, to, from) => void startMove(f, to, from)}
+          onRemove={(f, w) => void removeFrom(f, w)}
           onLastBottleGone={(f, reason) => setPending({ kind: 'offerHad', f, reason })}
           onOpen={setOpenId}
           onLogWear={(id) => setWearFor({ fragranceId: id })}

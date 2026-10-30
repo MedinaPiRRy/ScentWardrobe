@@ -28,6 +28,8 @@ interface SeedFragrance {
   /** Had: years, memory, why it left. */
   had?: HadDetails
   bottle?: { type: BottleType; sizeMl: number; remainingPct: number }
+  /** Other wardrobes it is in as well (a fragrance can be in several). */
+  also?: WardrobeKind[]
 }
 
 const NOTE_FAMILIES: Record<string, string> = {
@@ -82,7 +84,7 @@ export const SAMPLE_FRAGRANCES: SeedFragrance[] = [
     },
     accords: { fruity: 100, citrus: 80, woody: 70, smoky: 60, musky: 50, fresh: 45 },
     community: [90, 330, 540, 240, 690, 320, 3.8, 3.5],
-    wardrobe: 'wishlist',
+    wardrobe: 'wishlist', also: ['to_try'],
     impression: 'Bright smoky pineapple on a clean musky base. Confident and polished.'
   },
   {
@@ -239,6 +241,10 @@ export function seedSampleData(db: Db): number {
         bottle: s.bottle && { type: s.bottle.type, sizeMl: s.bottle.sizeMl, remainingMl: (s.bottle.sizeMl * s.bottle.remainingPct) / 100 }
       })
       if (!res.ok) throw new Error(`Seeding ${s.name}: ${res.message}`)
+      for (const w of s.also ?? []) {
+        const more = moveToWardrobe(db, { fragranceId: id, to: w })
+        if (!more.ok) throw new Error(`Seeding ${s.name} (${w}): ${more.message}`)
+      }
       const wear = db.prepare(
         `INSERT INTO wear_log (fragrance_id, bottle_id, worn_at, sprays, projection, longevity_hours)
          VALUES (?, (SELECT id FROM bottles WHERE fragrance_id = ? LIMIT 1), datetime('now', ?), 4, ?, ?)`

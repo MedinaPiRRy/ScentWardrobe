@@ -4,6 +4,18 @@ import { defaultExe, launch, sleep } from './harness.mjs'
 
 const EXE = process.env.SCENT_EXE ?? defaultExe()
 const only = process.argv.slice(2).map(Number)
+
+// With no argument every phase runs in its own fresh app and profile, so they cannot disturb each other.
+if (only.length === 0) {
+  const { spawnSync } = await import('node:child_process')
+  let failed = 0
+  for (const n of [1, 2, 3, 4, 5]) {
+    const r = spawnSync(process.execPath, [new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'), String(n)], { stdio: 'inherit', env: process.env })
+    if (r.status !== 0) failed++
+  }
+  console.log(failed ? `${failed} phase(s) failed` : 'all phases passed')
+  process.exit(failed ? 1 : 0)
+}
 const results = []
 const check = (name, ok, detail = '') => { results.push({ name, ok }); console.log(ok ? 'PASS' : 'FAIL', name, detail) }
 const app = await launch(EXE)
@@ -298,6 +310,99 @@ try {
     await sleep(300)
     const final = { frags: (await j('window.api.fragrances.list()')).length, images: readdirSync(join(app.dir, 'images')).length }
     check('closing the live page leaves nothing behind', final.frags === before.frags + 1 && final.images === before.images, JSON.stringify({ before, final }))
+  }
+
+  if (phase(5)) {
+    console.log('--- Phase 5: a fragrance in several wardrobes')
+    await j('window.api.dev.seedSampleData()')
+    await app.reload()
+    await app.go('#/')
+    await sleep(900)
+    const list = await j('window.api.fragrances.list()')
+    const aventus = list.find((x) => x.name === 'Aventus')
+    check('sample data has a fragrance in two wardrobes (Wishlist + To Try)', aventus.wardrobes.join() === 'wishlist,to_try', aventus.wardrobes.join())
+    const shelfNames = () => app.ev(`[...document.querySelectorAll('main [role=button]')].map((e) => e.getAttribute('aria-label'))`)
+    await app.clickStartsWith('Wishlist')
+    await sleep(600)
+    check('it is on the Wishlist shelf with a badge for its other wardrobe', (await shelfNames()).some((n) => n.startsWith('Aventus')) && (await app.ev(`!!document.querySelector('[aria-label="Also in To Try"]')`)))
+    await app.clickStartsWith('To Try')
+    await sleep(600)
+    check('and on the To Try shelf, with a badge for Wishlist', (await shelfNames()).some((n) => n.startsWith('Aventus')) && (await app.ev(`!!document.querySelector('[aria-label="Also in Wishlist"]')`)))
+    const counts = await app.ev(`[...document.querySelectorAll('header button')].map((b) => b.textContent.trim()).join(' | ')`)
+    check('tab counts count each membership', /Wishlist\s*2/.test(counts) && /To Try\s*3/.test(counts), counts)
+
+    // add a Collection bottle to a Wishlist fragrance (owns a decant, still wants the bottle) from the detail panel
+    await app.go(`#/?open=${aventus.id}`)
+    await sleep(1200)
+    check('the detail panel lists both wardrobes', (await app.ev(`[...document.querySelectorAll('[aria-label="Wardrobes it is in"] [role=listitem]')].map((x) => x.textContent.trim()).join('|')`)).includes('Wishlist') && (await app.text()).includes('To Try'))
+    await app.clickText('Add to wardrobe ▾')
+    await sleep(300)
+    check('the menu offers Add to My Collection', await app.clickStartsWith('Add to My Collection', '[role=menuitem]'))
+    await sleep(700)
+    check('adding to the collection asks for a bottle, like before', (await app.text()).includes('Bottle type'))
+    await app.ev(`(() => { const s = [...document.querySelectorAll('[role=dialog] select')][0]; const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(s, 'decant'); s.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await app.clickText('10 ml', '[role=dialog] button')
+    await app.clickText('Add to collection', '[role=dialog] button').catch?.(() => 0)
+    await app.ev(`[...document.querySelectorAll('[role=dialog] button')].find((b) => /^Add (to|bottle)/.test(b.textContent.trim()) || /Add to collection/i.test(b.textContent))?.click()`)
+    await sleep(1200)
+    const a2 = await j(`window.api.fragrances.get(${aventus.id})`)
+    check('it is now in three wardrobes and the decant is its bottle', a2.wardrobes.join() === 'collection,wishlist,to_try' && a2.bottles.some((b) => b.type === 'decant'), a2.wardrobes.join())
+    const own = await j('window.api.stats.overview()')
+    check('stats count it through its Collection membership', own.totals.collectionCount === 7, String(own.totals.collectionCount))
+
+    // remove one membership from the chip; its bottle and history stay
+    await app.go(`#/?open=${aventus.id}`)
+    await sleep(1200)
+    await app.ev(`document.querySelector('[aria-label="Remove from To Try"]')?.click()`)
+    await sleep(900)
+    const a3 = await j(`window.api.fragrances.get(${aventus.id})`)
+    check('removing a membership keeps the others and the bottle', a3.wardrobes.join() === 'collection,wishlist' && a3.bottles.length === 1, a3.wardrobes.join())
+    await app.key('Escape')
+
+    // the wishlist rule applies to the wishlist membership of an owned fragrance
+    const sauvage = list.find((x) => x.name === 'Sauvage')
+    const refused = await j(`window.api.wardrobe.move({ fragranceId: ${sauvage.id}, to: 'wishlist' })`)
+    check('the wishlist note rule still applies when it is already in Collection', refused.ok === false && refused.code === 'WISHLIST_IMPRESSION_REQUIRED')
+
+    // context menu: Add to Wishlist from the Collection shelf, then both shelves show it
+    await app.go('#/')
+    await sleep(800)
+    await app.clickStartsWith('My Collection')
+    await sleep(500)
+    const openMenuFor = async (name, house) => app.ev(`(() => { const el = [...document.querySelectorAll('main [role=button]')].find((e) => e.getAttribute('aria-label') === ${JSON.stringify(`${name} by ${house}`)}); if (!el) return false; const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.x + 30, clientY: r.y + 30 })); return true })()`)
+    check('right-click opens the menu', await openMenuFor('Santal 33', 'Le Labo'))
+    await sleep(300)
+    const menu = await app.ev(`[...document.querySelectorAll('.fixed button')].map((b) => b.textContent.trim()).join(' | ')`)
+    check('the menu has Add to, Move to and (for several wardrobes) Remove from', /Add to Wishlist/.test(menu) && /Move to Wishlist/.test(menu) && !/Remove from/.test(menu), menu)
+    await app.clickStartsWith('Add to Wishlist', '.fixed button')
+    await sleep(600)
+    await app.ev(`(() => { const t = document.querySelector('[role=dialog] textarea'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(t, 'Creamy sandalwood, I want the big bottle'); t.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+    await app.ev(`[...document.querySelectorAll('[role=dialog] button')].find((b) => /Add|Save|Move/.test(b.textContent) && !/Cancel/.test(b.textContent))?.click()`)
+    await sleep(1200)
+    const santal = (await j('window.api.fragrances.list()')).find((x) => x.name === 'Santal 33')
+    check('Add to Wishlist keeps it in My Collection too', santal.wardrobes.join() === 'collection,wishlist', santal.wardrobes.join())
+    check('the Collection shelf shows a badge for Wishlist', (await app.ev(`!!document.querySelector('[aria-label="Also in Wishlist"]')`)) === true)
+
+    // Garbage Perfumes is exclusive: refused until confirmed
+    await openMenuFor('Santal 33', 'Le Labo')
+    await sleep(300)
+    await app.clickStartsWith('Add to Garbage Perfumes', '.fixed button')
+    await sleep(600)
+    await app.ev(`[...document.querySelectorAll('[role=dialog] button')].find((b) => /Add|Save|Move|Bin|Throw/i.test(b.textContent) && !/Cancel/.test(b.textContent))?.click()`)
+    await sleep(900)
+    const conflictText = await app.text()
+    check('adding a multi-wardrobe fragrance to Garbage asks for confirmation', /cannot be in another wardrobe/.test(conflictText) && /Confirm/.test(conflictText))
+    check('nothing changed before I confirmed', (await j(`window.api.fragrances.get(${santal.id})`)).wardrobes.join() === 'collection,wishlist')
+    await app.clickText('Confirm', '[role=dialog] button')
+    await sleep(1200)
+    const binned = await j(`window.api.fragrances.get(${santal.id})`)
+    check('after confirming it is only in Garbage, with its history intact', binned.wardrobes.join() === 'garbage' && binned.bottles.length === 1 && binned.wearCount > 0, binned.wardrobes.join())
+
+    // importer: a fragrance in Have and Want
+    const cfg = 'https://www.fragrantica.com/perfume/Dior/Sauvage-31861.html'
+    const prev = await j(`window.api.fragrantica.listPreview(${JSON.stringify(`Have\n${cfg}\nWant\n${cfg}`)})`)
+    const st = prev.ok ? prev.data.items.map((i) => `${i.target}:${i.status}`).join(',') : prev.message
+    check('the import preview shows Have as already here and Want as adding the Wishlist', prev.ok && st.includes('collection:exists') && st.includes('wishlist:adds'), st)
   }
 
   check('no console errors', app.logs.errors.length === 0, app.logs.errors.slice(0, 3).join(' | '))

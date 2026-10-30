@@ -120,3 +120,28 @@ export const WARDROBES: WardrobeKind[] = ['collection', 'wishlist', 'to_try', 'h
 export const HAD_REASON_LABEL = { finished: 'Finished it', sold: 'Sold it', gifted: 'Gave it away' } as const
 
 export const QUICK_SIZES_ML = [2, 5, 10, 30, 50, 75, 100, 125, 200]
+
+export const isIn = (f: Pick<FragranceSummary, 'wardrobes'>, w: WardrobeKind): boolean => f.wardrobes.includes(w)
+
+/**
+ * The fragrance as it appears on one shelf: its own position there and the notes that belong to that wardrobe (why I
+ * dislike it, the Had details, the wishlist "needs a note" flag). Everything else is shared by all its wardrobes.
+ */
+export function viewIn(f: FragranceSummary, w: WardrobeKind): FragranceSummary {
+  const m = f.memberships.find((x) => x.wardrobe === w)
+  if (!m) return f
+  return {
+    ...f,
+    wardrobe: w,
+    shelfPosition: m.shelfPosition,
+    importedPending: m.importedPending,
+    dislikeNote: m.dislikeNote,
+    hadYears: m.hadYears,
+    hadMemory: m.hadMemory,
+    hadReason: m.hadReason,
+    desiredSizeMl: m.desiredSizeMl
+  }
+}
+
+/** "My Collection + Wishlist" */
+export const wardrobeList = (list: WardrobeKind[]): string => list.map((w) => WARDROBE_LABEL[w]).join(' + ')

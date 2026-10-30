@@ -74,8 +74,8 @@ Every result says where it comes from: **In my library** (with its wardrobe), **
 ## The five wardrobes
 
 Tabs at the top of the Wardrobes page. Drag bottles to reorder them (dragging is off while you search, filter or sort).
-Right-click a bottle for **Open**, **Log a wear** and **Move to …**, or use **Move to wardrobe** in its detail view.
-Moving never loses wears, bottles, notes or journal entries.
+Right-click a bottle for **Open**, **Log a wear**, **Rate…** and the wardrobe commands below. Adding to or moving between
+wardrobes never loses wears, bottles, notes, ratings or journal entries.
 
 | Wardrobe | Meaning |
 | --- | --- |
@@ -86,6 +86,32 @@ Moving never loses wears, bottles, notes or journal entries.
 | **Garbage Perfumes** | Perfumes you dislike, in a dumpster, with an optional note on why. They stay searchable so you do not buy them again. |
 
 Only **My Collection** counts in recommendations, the Layering Lab and the collection statistics.
+
+### One fragrance in several wardrobes
+
+A fragrance can be in more than one wardrobe at the same time, for example:
+
+- **My Collection + Wishlist**: you own a decant or sample and still want the full bottle.
+- **Had + My Collection**: you finished the old bottle and bought a new one.
+- **Had + Wishlist**: you used to own it and want it again.
+- **To Try + Wishlist**, **My Collection + To Try**, and so on.
+
+It appears on the shelf of each wardrobe it belongs to, with a small round badge (the first letter of the other
+wardrobe, for example **W** for Wishlist) and a line in the hover tooltip ("Also in Wishlist"). In its detail view the
+wardrobes are listed as small tags; the **×** on a tag removes that one (only while another remains: its bottles,
+wears and notes always stay).
+
+- **Add to …** (right-click menu, or **Add to wardrobe ▾** in the detail view) puts it in another wardrobe *as well*.
+- **Move to …** is the shortcut that adds the new wardrobe and leaves the old one in one step.
+- **Remove from …** takes it out of one wardrobe.
+
+Rules: the wishlist note is required for the wishlist membership (owning it does not excuse you), a collection
+membership needs a bottle or vial, and you give a fragrance **one rating** whichever wardrobes it is in. **Garbage
+Perfumes is the exception: a fragrance you dislike cannot also be somewhere else.** If you try to combine them, the app
+says what would be removed and asks you to confirm; the fragrance, its bottles, wears and notes are kept, and the old
+"why I disliked it" or Had memories come back if you return it to that wardrobe. Stats, recommendations and the Layering
+Lab count a fragrance when it is in **My Collection** (even if that membership is only a decant); a sample of a
+fragrance that is only on your Wishlist or To Try is not counted but still shows in the drawer.
 
 ## Bottles, samples and decants
 
@@ -195,7 +221,9 @@ would be added and what you already have, and only then adds anything.
 
 - Have → My Collection (with a **100 ml placeholder bottle**, because Fragrantica has no bottle sizes: correct it
   afterwards), Want → Wishlist (marked "needs a note"), Had → Had, custom shelves such as "For Test" → To Try.
-- Fragrances you already have are skipped, so running it again is safe.
+- A fragrance in two lists (Have and Want, say) becomes **both**: one fragrance in two wardrobes. In the preview it
+  shows **Adds this wardrobe**. A fragrance you already have in the app gets the extra wardrobe if it lacks it, and is
+  skipped if it is already there (or in Garbage Perfumes, which cannot be combined). Running it again is safe.
 - Tick *Also read each fragrance page* to fetch notes, accords and pictures (about 4 seconds per fragrance, and you can
   stop at any time). Pages that cannot be read are still added with their name and house.
 - Only pages anyone can see are used. If Fragrantica asks you to log in or pass a check, a window opens: do it there.
@@ -226,8 +254,8 @@ search, so they never fill your shelves, and the file is read in a stream so ver
   for the weather (its name and coordinates) and the last Fragrantica username you typed. Do not post a backup
   publicly or send it to someone you do not trust. The CSV export contains only your fragrance rows, no settings.
 - The imported dataset can be very large, so backups leave it out unless you tick *Include the imported dataset*.
-- **Settings → Export** writes your fragrances to a CSV that opens in Excel (one row per fragrance, with notes, accords,
-  bottle levels, wear statistics and prices).
+- **Settings → Export** writes your fragrances to a CSV that opens in Excel (one row per fragrance with all its wardrobes in the first
+  column, plus notes, accords, bottle levels, wear statistics, prices and your rating).
 
 ## Where your data lives
 

@@ -12,7 +12,7 @@ import { CSS } from '@dnd-kit/utilities'
 import type { FragranceSummary } from '@shared/types'
 import BottleSvg, { bottleDims } from './BottleSvg'
 import type { ShelfTheme } from './themes'
-import { arrayMove } from '../lib/shelf'
+import { arrayMove, WARDROBE_LABEL } from '../lib/shelf'
 
 interface Props {
   items: FragranceSummary[]
@@ -146,10 +146,30 @@ function Slot({ f, slot, scale, tone, sepia, showLevel, draggable, vialTag, onRa
       >
         <BottleSvg fragrance={f} showLevel={showLevel} scale={scale} />
       </div>
-      {vialTag && (f.wardrobe === 'wishlist' || f.wardrobe === 'to_try') && f.activeBottleCount > 0 && (
-        <span className="absolute left-3 top-1 z-10 rounded-full bg-ink-950/85 px-1.5 text-[10px] font-medium text-cream ring-1 ring-brass-500/50" title={`I have ${f.bottles.map((b) => `${b.sizeMl} ml ${b.type}`).join(', ')}`}>
-          {f.bottles.some((b) => b.type === 'sample' || b.type === 'decant') ? 'have a vial' : 'have one'}
-        </span>
+      {vialTag && (
+        <div className="pointer-events-none absolute left-3 top-1 z-10 flex flex-col items-start gap-0.5">
+          {(f.wardrobe === 'wishlist' || f.wardrobe === 'to_try') && !f.wardrobes.includes('collection') && f.activeBottleCount > 0 && (
+            <span className="rounded-full bg-ink-950/85 px-1.5 text-[10px] font-medium text-cream ring-1 ring-brass-500/50" title={`I have ${f.bottles.map((b) => `${b.sizeMl} ml ${b.type}`).join(', ')}`}>
+              {f.bottles.some((b) => b.type === 'sample' || b.type === 'decant') ? 'have a vial' : 'have one'}
+            </span>
+          )}
+          {f.wardrobes.some((w) => w !== f.wardrobe) && (
+            <div className="flex gap-0.5">
+              {f.wardrobes
+                .filter((w) => w !== f.wardrobe)
+                .map((w) => (
+                  <span
+                    key={w}
+                    className="flex h-4 w-4 items-center justify-center rounded-full bg-ink-950/90 text-[9px] font-bold text-cream ring-1 ring-cream/40"
+                    title={`Also in ${WARDROBE_LABEL[w]}`}
+                    aria-label={`Also in ${WARDROBE_LABEL[w]}`}
+                  >
+                    {WARDROBE_LABEL[w][0]}
+                  </span>
+                ))}
+            </div>
+          )}
+        </div>
       )}
       {f.importedPending && (
         <span className="absolute right-3 top-1 z-10 rounded-full bg-brass-500 px-1.5 text-[10px] font-bold text-[#17110b]" title="Imported without a note. Open it and write what it smells like to you.">
@@ -164,6 +184,7 @@ function Slot({ f, slot, scale, tone, sepia, showLevel, draggable, vialTag, onRa
           <div className="text-sm font-medium text-cream">{f.name}</div>
           <div className="text-xs text-brass-400">{f.house}</div>
           <div className="mt-0.5 text-[11px] text-cream/70">{f.rating != null ? `Rated ${f.rating}/10` : 'Not rated yet'}</div>
+          {f.wardrobes.some((w) => w !== f.wardrobe) && <div className="text-[11px] text-cream/70">Also in {f.wardrobes.filter((w) => w !== f.wardrobe).map((w) => WARDROBE_LABEL[w]).join(', ')}</div>}
         </div>
       )}
       {onRate && hover && !isDragging && f.wardrobe && (

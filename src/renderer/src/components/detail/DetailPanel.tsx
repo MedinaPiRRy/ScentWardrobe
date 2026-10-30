@@ -18,7 +18,9 @@ const KINDS: WardrobeKind[] = WARDROBES
 /** Notes that belong to a particular wardrobe, plus the old bottles of a fragrance I bought again. */
 function WardrobeNotes({ d, onChanged, say }: { d: FragranceDetail; onChanged: () => void; say: (m: string) => void }) {
   const [editGarbage, setEditGarbage] = useState(false)
-  const [note, setNote] = useState(d.dislikeNote ?? '')
+  const garbage = d.memberships.find((m) => m.wardrobe === 'garbage')
+  const had = d.memberships.find((m) => m.wardrobe === 'had')
+  const [note, setNote] = useState(garbage?.dislikeNote ?? '')
   const [editHad, setEditHad] = useState(false)
 
   const saveGarbage = async () => {
@@ -30,7 +32,7 @@ function WardrobeNotes({ d, onChanged, say }: { d: FragranceDetail; onChanged: (
 
   return (
     <>
-      {d.wardrobe === 'garbage' && (
+      {garbage && (
         <div className="mb-5 rounded-lg border border-red-900/60 bg-red-950/30 p-3">
           <div className="text-[11px] uppercase tracking-wider text-red-300/80">Why I dislike it</div>
           {editGarbage ? (
@@ -40,14 +42,14 @@ function WardrobeNotes({ d, onChanged, say }: { d: FragranceDetail; onChanged: (
                 <button className={primaryBtn} onClick={saveGarbage}>
                   Save
                 </button>
-                <button className={ghostBtn} onClick={() => { setEditGarbage(false); setNote(d.dislikeNote ?? '') }}>
+                <button className={ghostBtn} onClick={() => { setEditGarbage(false); setNote(garbage?.dislikeNote ?? '') }}>
                   Cancel
                 </button>
               </div>
             </>
           ) : (
             <p className="mt-1 text-sm text-cream/85">
-              {d.dislikeNote ? `“${d.dislikeNote}”` : <span className="text-cream/45">No reason written down.</span>}{' '}
+              {garbage?.dislikeNote ? `“${garbage.dislikeNote}”` : <span className="text-cream/45">No reason written down.</span>}{' '}
               <button className="ml-2 text-xs underline hover:text-cream" onClick={() => setEditGarbage(true)}>
                 Edit
               </button>
@@ -56,18 +58,18 @@ function WardrobeNotes({ d, onChanged, say }: { d: FragranceDetail; onChanged: (
         </div>
       )}
 
-      {d.wardrobe === 'had' && (
+      {had && (
         <div className="mb-5 rounded-lg border p-3" style={{ borderColor: '#8d6a45aa', background: '#6a4d2e22' }}>
           <div className="text-[11px] uppercase tracking-wider" style={{ color: '#d3b88a' }}>
             Keepsake
           </div>
           <dl className="mt-1 grid grid-cols-[7rem_1fr] gap-y-1 text-sm">
             <dt className="text-cream/50">Years I wore it</dt>
-            <dd>{d.hadYears ?? <span className="text-cream/40">not noted</span>}</dd>
+            <dd>{had?.hadYears ?? <span className="text-cream/40">not noted</span>}</dd>
             <dt className="text-cream/50">Why it left</dt>
-            <dd>{d.hadReason ? HAD_REASON_LABEL[d.hadReason] : <span className="text-cream/40">not noted</span>}</dd>
+            <dd>{had?.hadReason ? HAD_REASON_LABEL[had.hadReason] : <span className="text-cream/40">not noted</span>}</dd>
             <dt className="text-cream/50">A memory</dt>
-            <dd className="italic">{d.hadMemory ? `“${d.hadMemory}”` : <span className="not-italic text-cream/40">none yet</span>}</dd>
+            <dd className="italic">{had?.hadMemory ? `“${had.hadMemory}”` : <span className="not-italic text-cream/40">none yet</span>}</dd>
           </dl>
           <button className="mt-2 text-xs underline hover:text-cream" onClick={() => setEditHad(true)}>
             Edit
@@ -75,7 +77,7 @@ function WardrobeNotes({ d, onChanged, say }: { d: FragranceDetail; onChanged: (
           {editHad && (
             <HadDialog
               title={`${d.name}: years, memory, why it left`}
-              initial={{ years: d.hadYears, memory: d.hadMemory, reason: d.hadReason }}
+              initial={{ years: had?.hadYears, memory: had?.hadMemory, reason: had?.hadReason }}
               submitLabel="Save"
               onCancel={() => setEditHad(false)}
               onSubmit={async (had) => {
@@ -125,7 +127,9 @@ interface Props {
   onClose: () => void
   onChanged: () => void
   onEdit: (d: FragranceDetail) => void
-  onMove: (f: FragranceSummary, to: WardrobeKind) => void
+  /** Adds `to` next to the wardrobes it is in, or (with `from`) moves it from `from` to `to`. */
+  onMove: (f: FragranceSummary, to: WardrobeKind, from?: WardrobeKind) => void
+  onRemove: (f: FragranceSummary, wardrobe: WardrobeKind) => void
   onOpen: (id: number) => void
   onLogWear: (id: number) => void
   onLastBottleGone: (f: FragranceSummary, reason: HadReason) => void
@@ -134,7 +138,7 @@ interface Props {
   say: (m: string) => void
 }
 
-export default function DetailPanel({ id, rev, onClose, onChanged, onEdit, onMove, onOpen, onLogWear, onAddToLab, onLastBottleGone, onEditWear, say }: Props) {
+export default function DetailPanel({ id, rev, onClose, onChanged, onEdit, onMove, onRemove, onOpen, onLogWear, onAddToLab, onLastBottleGone, onEditWear, say }: Props) {
   const [d, setD] = useState<FragranceDetail | null>(null)
   const [note, setNote] = useState<NoteEntry | null>(null)
   const [others, setOthers] = useState<FragranceSummary[]>([])
@@ -184,9 +188,9 @@ export default function DetailPanel({ id, rev, onClose, onChanged, onEdit, onMov
   }
 
   if (!d) return null
-  const owned = d.wardrobe === 'collection'
+  const owned = d.wardrobes.includes('collection')
   // Wanted or to-try fragrances can still hold a sample or decant I have of them.
-  const showBottles = owned || d.wardrobe === 'wishlist' || d.wardrobe === 'to_try' || d.bottles.length > 0
+  const showBottles = owned || d.wardrobes.includes('wishlist') || d.wardrobes.includes('to_try') || d.bottles.length > 0
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-6" onMouseDown={onClose}>
@@ -213,7 +217,20 @@ export default function DetailPanel({ id, rev, onClose, onChanged, onEdit, onMov
             {[d.year, d.concentration, d.gender].filter(Boolean).join(' · ')}
           </div>
           {d.perfumers && <div className="mt-1 text-center text-xs text-cream/50">Perfumer: {d.perfumers}</div>}
-          {d.wardrobe && <div className="mt-2 rounded-full border border-brass-500/40 px-3 py-0.5 text-[11px] text-brass-400">{WARDROBE_LABEL[d.wardrobe]}</div>}
+          {d.memberships.length > 0 && (
+            <div className="mt-2 flex flex-wrap justify-center gap-1.5" role="list" aria-label="Wardrobes it is in">
+              {d.memberships.map((m) => (
+                <span key={m.wardrobe} role="listitem" className="inline-flex items-center gap-1 rounded-full border border-brass-500/40 px-3 py-0.5 text-[11px] text-brass-400">
+                  {WARDROBE_LABEL[m.wardrobe]}
+                  {d.memberships.length > 1 && (
+                    <button className="rounded px-0.5 text-cream/70 hover:text-cream" onClick={() => onRemove(d, m.wardrobe)} aria-label={`Remove from ${WARDROBE_LABEL[m.wardrobe]}`} title={`Remove from ${WARDROBE_LABEL[m.wardrobe]} (its bottles, wears and notes stay)`}>
+                      ×
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
           {d.isForeign && (
             <div className="mt-2 rounded-full border border-cream/30 px-3 py-0.5 text-[11px] text-cream/70" title="You wore it, but it is not yours. Move it to a wardrobe to keep it.">
               Not mine
@@ -266,16 +283,24 @@ export default function DetailPanel({ id, rev, onClose, onChanged, onEdit, onMov
               {d.imagePath ? 'Replace photo' : 'Use my own photo'}
             </button>
             <div className="relative">
-              <button className={`${ghostBtn} w-full`} onClick={() => setMenuOpen((v) => !v)}>
-                Move to wardrobe ▾
+              <button className={`${ghostBtn} w-full`} onClick={() => setMenuOpen((v) => !v)} aria-haspopup="menu" aria-expanded={menuOpen}>
+                Add to wardrobe ▾
               </button>
               {menuOpen && (
-                <div className="absolute bottom-full z-10 mb-1 w-full rounded-lg border border-ink-600 bg-ink-800 py-1 shadow-xl">
-                  {KINDS.filter((k) => k !== d.wardrobe).map((k) => (
-                    <button key={k} className="block w-full px-3 py-2 text-left text-sm hover:bg-ink-600" onClick={() => { setMenuOpen(false); onMove(d, k) }}>
-                      {WARDROBE_LABEL[k]}
-                    </button>
+                <div role="menu" className="absolute bottom-full z-10 mb-1 w-full rounded-lg border border-ink-600 bg-ink-800 py-1 shadow-xl">
+                  {KINDS.filter((k) => !d.wardrobes.includes(k)).map((k) => (
+                    <div key={k} className="flex items-stretch">
+                      <button role="menuitem" className="min-w-0 flex-1 px-3 py-2 text-left text-sm hover:bg-ink-600" onClick={() => { setMenuOpen(false); onMove(d, k) }}>
+                        Add to {WARDROBE_LABEL[k]}
+                      </button>
+                      {d.memberships.length === 1 && (
+                        <button role="menuitem" className="shrink-0 px-2 text-xs text-cream/70 underline hover:bg-ink-600 hover:text-cream" title={`Move from ${WARDROBE_LABEL[d.memberships[0].wardrobe]} instead of keeping both`} onClick={() => { setMenuOpen(false); onMove(d, k, d.memberships[0].wardrobe) }}>
+                          move
+                        </button>
+                      )}
+                    </div>
                   ))}
+                  {KINDS.every((k) => d.wardrobes.includes(k)) && <div className="px-3 py-2 text-xs text-cream/60">It is in every wardrobe.</div>}
                 </div>
               )}
             </div>
