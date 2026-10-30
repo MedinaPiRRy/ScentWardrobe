@@ -43,6 +43,7 @@ import { computeOverview } from './db/stats'
 import { completeFollowUp, deleteWear, dismissFollowUp, listWears, listWearsRange, logWear, pendingFollowUps, updateWear } from './db/wears'
 import { AppError, dbInfo, fail, getFragrance, listFragrances, listPastBottles, toResult } from './db/repo'
 import { moveToWardrobe, removeFromWardrobe, reorderWardrobe, setWardrobeDetails } from './db/memberships'
+import { checkForUpdate, installUpdate, openReleasePage } from './updater'
 import { clearSampleData, seedSampleData } from './db/seed'
 
 function analyze(path: string, table?: string) {
@@ -69,8 +70,12 @@ export function registerIpc(db: Db, dbPath: string): void {
   const paths = { dbPath, imagesDir: join(app.getPath('userData'), 'images') }
   const handlers: Record<ChannelName, (...args: any[]) => unknown> = {
     'app:dbInfo': () => dbInfo(db, dbPath),
+    'app:version': () => app.getVersion(),
     'app:paths': () => appPaths(paths),
     'app:openDataFolder': async () => void (await shell.openPath(app.getPath('userData'))),
+    'update:check': () => checkForUpdate(),
+    'update:install': () => installUpdate(db, paths),
+    'update:openReleasePage': () => openReleasePage(),
     'backup:list': () => listBackups(),
     'backup:create': (inc: boolean) => createManualBackup(db, paths, inc),
     'backup:exportAs': (inc: boolean) => exportBackupAs(db, paths, inc),

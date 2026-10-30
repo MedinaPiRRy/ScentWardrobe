@@ -89,6 +89,7 @@ try {
       await app.go('#/browse'); await snap('browse', 'Browse')
       await app.ev(`(() => { const i = document.querySelector('main input'); if (i) { const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; s.call(i, 'sauv'); i.dispatchEvent(new Event('input', { bubbles: true })) } })()`)
       await sleep(900); await snap('browse-results', 'Browse with results')
+      await app.go('#/'); await app.clickStartsWith('⟳'); await sleep(3500); await snap('update-dialog', 'update dialog'); await app.key('Escape')
       for (const [hash, name] of [['#/recommendations', 'recommendations'], ['#/layering', 'layering'], ['#/calendar', 'calendar'], ['#/stats', 'stats'], ['#/settings', 'settings']]) { await app.go(hash); await snap(name, name) }
     }
   }

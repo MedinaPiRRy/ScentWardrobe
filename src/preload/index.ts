@@ -9,7 +9,7 @@ const call =
 const c = <T>(channel: string) => call(channel) as T
 
 const api: Api = {
-  app: { dbInfo: c('app:dbInfo'), paths: c('app:paths'), openDataFolder: c('app:openDataFolder') },
+  app: { dbInfo: c('app:dbInfo'), paths: c('app:paths'), version: c('app:version'), openDataFolder: c('app:openDataFolder') },
   backup: { list: c('backup:list'), create: c('backup:create'), exportAs: c('backup:exportAs'), restore: c('backup:restore'), openFolder: c('backup:openFolder') },
   export: { collectionCsv: c('export:collectionCsv') },
   fragrances: {
@@ -82,6 +82,7 @@ const api: Api = {
     deleteCombo: c('layering:deleteCombo')
   },
   recommend: { candidates: c('recommend:candidates') },
+  update: { check: c('update:check'), install: c('update:install'), openReleasePage: c('update:openReleasePage') },
   weather: { search: c('weather:search'), current: c('weather:current'), location: c('weather:location'), setLocation: c('weather:setLocation') },
   stats: { overview: c('stats:overview') },
   settings: { get: c('settings:get'), set: c('settings:set'), activities: c('settings:activities'), addActivity: c('settings:addActivity') },

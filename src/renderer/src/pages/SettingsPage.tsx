@@ -6,6 +6,7 @@ import { ghostBtn, primaryBtn } from '../components/Dialogs'
 import ImportWizard from '../components/ImportWizard'
 import LocationPicker from '../components/LocationPicker'
 import FragranticaProfileDialog from '../components/FragranticaProfileDialog'
+import UpdateDialog from '../components/UpdateDialog'
 import UsualSpraysDialog from '../components/UsualSpraysDialog'
 import { CURRENCIES, isCurrencyCode, saveCurrency, useCurrency } from '../lib/money'
 import { applyTheme, storedTheme, type ThemeChoice } from '../lib/theme'
@@ -57,6 +58,8 @@ export default function SettingsPage() {
   const [importing, setImporting] = useState(false)
   const [sprays, setSprays] = useState(false)
   const [profileImport, setProfileImport] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [version, setVersion] = useState('')
   const currency = useCurrency()
   const [customCode, setCustomCode] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
@@ -81,6 +84,7 @@ export default function SettingsPage() {
       if ((await window.api.settings.get('units.temp')) === 'F') setUnit('F')
       const t = parseFloat((await window.api.settings.get('bottle.lowThreshold')) ?? '')
       if (Number.isFinite(t)) setThreshold(Math.round(t * 100))
+      setVersion(await window.api.app.version())
       setAutoBackup((await window.api.settings.get('backup.auto')) !== '0')
       await refresh()
     })()
@@ -233,6 +237,16 @@ export default function SettingsPage() {
           </div>
         </details>
       </Section>
+
+      <Section title="Updates" hint="The app never looks for updates on its own. This button asks GitHub for the newest release.">
+        <div className="flex flex-wrap items-center gap-3">
+          <button className={ghostBtn} onClick={() => setUpdating(true)}>
+            Check for updates
+          </button>
+          <span className="text-sm text-cream/70">You have version {version}</span>
+        </div>
+      </Section>
+      {updating && <UpdateDialog onClose={() => setUpdating(false)} />}
 
       <Section title="Backup and restore" hint="One zip holds your whole database and all cached images.">
         <div className="flex flex-wrap items-center gap-2">

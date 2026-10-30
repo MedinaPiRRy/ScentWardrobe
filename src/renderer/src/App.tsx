@@ -1,9 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import BrowsePage from './pages/BrowsePage'
 import CalendarPage from './pages/CalendarPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import FollowUpPrompt from './components/FollowUpPrompt'
+import UpdateDialog from './components/UpdateDialog'
 import { applyTheme, storedTheme, type ThemeChoice } from './lib/theme'
 import { hasMod, MOD_LABEL } from './lib/platform'
 import LayeringPage from './pages/LayeringPage'
@@ -25,6 +26,7 @@ const NAV = [
 export default function App() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const [updating, setUpdating] = useState(false)
 
   // The database holds the real theme choice; localStorage only avoids a flash on start.
   useEffect(() => {
@@ -75,7 +77,10 @@ export default function App() {
             {n.label}
           </NavLink>
         ))}
-        <div className="mt-auto px-3 text-[11px] leading-relaxed text-cream/35">
+        <button className="mt-auto mb-3 rounded-lg px-3 py-2 text-left text-xs text-cream/70 hover:bg-ink-800 hover:text-cream" onClick={() => setUpdating(true)}>
+          ⟳ Check for updates
+        </button>
+        <div className="px-3 text-[11px] leading-relaxed text-cream/35">
           {MOD_LABEL}N add a fragrance
           <br />
           {MOD_LABEL}F search (Browse)
@@ -95,6 +100,7 @@ export default function App() {
         </ErrorBoundary>
       </main>
       <FollowUpPrompt onAnswered={() => undefined} />
+      {updating && <UpdateDialog onClose={() => setUpdating(false)} />}
     </div>
   )
 }

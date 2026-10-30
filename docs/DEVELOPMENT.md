@@ -94,6 +94,18 @@ Set `SCENT_EXE` if the executable is not in the default place for your system.
    signed or notarized**; macOS signing would need an Apple Developer ID and notarization credentials added to the
    workflow.
 
+## The update button
+
+`src/main/updater.ts` (Electron side) and `src/main/updateCore.ts` (pure, tested in `updateCore.test.ts`). It is user-initiated
+only: `update:check` asks `api.github.com/repos/MedinaPiRRy/ScentWardrobe/releases/latest`; `update:install` (Windows) looks
+the release up again in the main process, so nothing from the window decides what is downloaded, requires exactly one asset
+named `Scent-Wardrobe-Setup-<x.y.z>.exe` hosted by this repository (or GitHub's CDN), and requires the `digest`
+(`sha256:...`) GitHub attaches to release assets. It streams the file to a private temp folder with a size cap, compares the SHA-256, takes a
+manual backup, starts the installer detached and quits. A release without a digest is shown but not installed
+automatically. For this to work a release must be published with the installer attached (the release workflow does that);
+pre-release and non-`x.y.z` tags are ignored. What is not covered by automated tests: the real download and install of a
+newer version, which needs a published release newer than the running build.
+
 ## Platform notes
 
 - Window position and size are stored in `window-state.json` and sanitised when read.

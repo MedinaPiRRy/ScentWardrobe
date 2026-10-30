@@ -532,6 +532,20 @@ export interface BackupInfo {
   kind: 'auto' | 'manual' | 'pre-restore'
 }
 
+/** What the "Check for updates" dialog shows (the newest GitHub release compared with the running version). */
+export interface UpdateInfo {
+  current: string
+  latest: string
+  newer: boolean
+  /** The release notes, plain text. */
+  notes: string
+  releaseUrl: string
+  /** True when the app can download, verify and start the installer itself (Windows, with a published checksum). */
+  canInstall: boolean
+  installerName: string | null
+  installerBytes: number | null
+}
+
 export interface AppPaths {
   version: string
   userData: string

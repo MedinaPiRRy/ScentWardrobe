@@ -37,6 +37,7 @@ import type {
   WardrobeKind,
   WeatherReading,
   WearEntry,
+  UpdateInfo,
   WearInput,
   WearLogged
 } from './types'
@@ -46,8 +47,17 @@ export interface Api {
   app: {
     dbInfo(): Promise<DbInfo>
     paths(): Promise<AppPaths>
+    version(): Promise<string>
     /** Opens the data folder in Explorer. */
     openDataFolder(): Promise<void>
+  }
+  update: {
+    /** Asks GitHub for the newest release. Only runs when the user presses the button. */
+    check(): Promise<Result<UpdateInfo>>
+    /** Downloads the installer, verifies its checksum, backs up the data, starts the installer and quits the app. */
+    install(): Promise<Result<{ started: true }>>
+    /** Opens the release page in the browser. */
+    openReleasePage(): Promise<void>
   }
   backup: {
     list(): Promise<BackupInfo[]>
