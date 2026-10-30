@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FragranceDetail, TimeOfDay, WearEntry, WearInput, WearLogged } from '@shared/types'
+import type { TempUnit } from '@shared/weather'
 import { PROJECTION_LABELS } from '../lib/performance'
+import { liveWeatherFields, shouldFetchLiveWeather, storedTempToText, typedTempToC } from '../lib/weatherFill'
 import { formatMl } from '../lib/bottles'
 import { ghostBtn, Modal, primaryBtn } from './Dialogs'
 
@@ -57,6 +59,7 @@ export default function WearForm({ fragranceId, comboId, comboTitle, defaultSpra
   const [bottleId, setBottleId] = useState<number | null>(entry?.bottleId ?? null)
   const [activity, setActivity] = useState(entry?.activity ?? activityPrefill ?? '')
   const [newActivity, setNewActivity] = useState<string | null>(null)
+  const [unit, setUnit] = useState<TempUnit>('C')
   const [temp, setTemp] = useState(entry?.temperatureC != null ? String(entry.temperatureC) : weatherPrefill?.temperatureC != null ? String(weatherPrefill.temperatureC) : '')
   const [humidity, setHumidity] = useState(entry?.humidity != null ? String(entry.humidity) : weatherPrefill?.humidity != null ? String(weatherPrefill.humidity) : '')
   const [weather, setWeather] = useState(entry?.weather ?? weatherPrefill?.weather ?? '')
@@ -66,6 +69,42 @@ export default function WearForm({ fragranceId, comboId, comboTitle, defaultSpra
   const [notes, setNotes] = useState(entry?.notes ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // Weather that came from the live lookup (not typed by me); the label disappears as soon as I change a field.
+  const [live, setLive] = useState(false)
+  const weatherEdited = useRef(false)
+
+  // The temperature box shows my own unit; stored values are always Celsius.
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      const u: TempUnit = (await window.api.settings.get('units.temp')) === 'F' ? 'F' : 'C'
+      if (!alive) return
+      setUnit(u)
+      if (u === 'F' && !weatherEdited.current) {
+        const c = entry?.temperatureC ?? weatherPrefill?.temperatureC
+        if (c != null) setTemp(storedTempToText(c, 'F'))
+      }
+      // Live weather: only for a new wear dated today, never for past or diary dates, silent on any failure.
+      if (shouldFetchLiveWeather({ editing: !!entry, day: when.slice(0, 10), today: localInputValue().slice(0, 10), prefilled: !!weatherPrefill })) {
+        try {
+          const r = await window.api.weather.current()
+          if (!alive || !r.ok || weatherEdited.current) return
+          const f = liveWeatherFields(r.data, u)
+          setTemp(f.temp)
+          setHumidity(f.humidity)
+          setWeather(f.weather)
+          setLive(true)
+        } catch {
+          /* offline or no location: leave the fields empty */
+        }
+      }
+    })()
+    return () => {
+      alive = false
+    }
+    // Runs once, when the form opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     void window.api.settings.activities().then(setActivities)
@@ -87,6 +126,16 @@ export default function WearForm({ fragranceId, comboId, comboTitle, defaultSpra
   }, [fragranceId, entry, isCombo, defaultSprays])
 
   const isPast = when.slice(0, 10) < localInputValue().slice(0, 10)
+
+  // Moving the date to a past day removes weather that was only filled in from the live lookup.
+  useEffect(() => {
+    if (isPast && live && !weatherEdited.current) {
+      setTemp('')
+      setHumidity('')
+      setWeather('')
+      setLive(false)
+    }
+  }, [isPast, live])
   const num = (v: string) => (v.trim() === '' ? null : parseFloat(v))
   const activeBottles = d?.bottles.filter((b) => b.status === 'active' && (b.remainingMl > 0 || b.id === entry?.bottleId)) ?? []
 
@@ -102,7 +151,7 @@ export default function WearForm({ fragranceId, comboId, comboTitle, defaultSpra
       timeOfDay: tod === 'auto' ? timeOfDayFor(hour) : tod,
       sprays: n,
       activity: activity || null,
-      temperatureC: num(temp),
+      temperatureC: typedTempToC(temp, unit),
       humidity: num(humidity),
       weather: weather || null,
       projection,
@@ -205,11 +254,14 @@ export default function WearForm({ fragranceId, comboId, comboTitle, defaultSpra
         </div>
 
         <div>
-          <div>Weather</div>
+          <div className="flex items-baseline gap-2">
+            Weather
+            {live && <span className="text-[11px] text-brass-400" data-testid="live-weather-label">from live weather</span>}
+          </div>
           <div className="mt-1 grid grid-cols-3 gap-2">
-            <input type="number" step="any" placeholder="°C" aria-label="Temperature in °C" value={temp} onChange={(e) => setTemp(e.target.value)} className={`${field} mt-0`} />
-            <input type="number" step="any" min={0} max={100} placeholder="RH %" aria-label="Humidity in percent" value={humidity} onChange={(e) => setHumidity(e.target.value)} className={`${field} mt-0`} />
-            <select value={weather} onChange={(e) => setWeather(e.target.value)} className={`${field} mt-0`} aria-label="Conditions">
+            <input type="number" step="any" placeholder={`°${unit}`} aria-label={`Temperature in °${unit}`} value={temp} onChange={(e) => ((weatherEdited.current = true), setLive(false), setTemp(e.target.value))} className={`${field} mt-0`} />
+            <input type="number" step="any" min={0} max={100} placeholder="RH %" aria-label="Humidity in percent" value={humidity} onChange={(e) => ((weatherEdited.current = true), setLive(false), setHumidity(e.target.value))} className={`${field} mt-0`} />
+            <select value={weather} onChange={(e) => ((weatherEdited.current = true), setLive(false), setWeather(e.target.value))} className={`${field} mt-0`} aria-label="Conditions">
               <option value="">Conditions</option>
               {weather && !WEATHER_CONDITIONS.includes(weather) && <option>{weather}</option>}
               {WEATHER_CONDITIONS.map((w) => (

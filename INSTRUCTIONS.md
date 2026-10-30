@@ -102,6 +102,12 @@ Fill in the date and time, how many sprays, the activity, the weather, how stron
 compliments and notes. Today's wears take the sprays out of the bottle you pick (the one you used last time is chosen for you,
 or the first active one). Leave "how long it lasted" empty and the app asks at the end of the day.
 
+**Weather fills itself in.** When you log a wear dated today and you have set a city (Settings → Weather location),
+the temperature, humidity and conditions are filled in from the live weather and marked "from live weather". Change any
+of them and the label goes away. The temperature box follows your °C or °F setting. If you have no city, are offline or
+the lookup fails, the fields stay empty and nothing gets in your way. Past days never look anything up, and a lookup
+is remembered for a few minutes so opening the form again does not ask the service again.
+
 **Past days are diary entries.** A wear dated before today never changes a bottle level and never asks how long it
 lasted. Tick *Take this from the bottle* in the form if you do want it to count. Wearing something you have no bottle of
 (a gift, a friend's) is fine too.
