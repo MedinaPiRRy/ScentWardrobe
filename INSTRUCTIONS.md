@@ -241,6 +241,23 @@ app), use **Settings → Fragrance data → Import a dataset…** and pick a `.c
 layouts are recognised automatically; otherwise you map the columns with a preview. Imported rows are only used for
 search, so they never fill your shelves, and the file is read in a stream so very large ones work.
 
+## Updating the app
+
+Press **Check for updates** at the bottom of the sidebar (or **Settings → Updates**). The app asks GitHub for the newest
+release of Scent Wardrobe, and only then; it never checks on its own, and nothing about you or your library is sent.
+
+- If you are up to date it says so.
+- If a newer version exists it shows the release notes. On **Windows**, **Download and install** downloads the installer,
+  checks it against the SHA-256 checksum GitHub published for that file, saves a backup of your data, starts the
+  installer and closes the app. Open the app again when the installer finishes. Windows may warn about an unknown
+  publisher because the installer is not code-signed. Your library is not touched by the installer.
+- **Open release page** opens the release in your browser instead. On **macOS** this is the only option: download the new
+  DMG and drag the app over the old one, as when installing.
+- If there is no internet or no release, you get a message and nothing changes.
+
+A new version may upgrade your database the first time it opens (the app says nothing, it just does it). That is why the
+update makes a backup first; you can also make your own under **Backup and restore**.
+
 ## Backup and restore
 
 **Settings → Backup and restore.**
@@ -286,6 +303,10 @@ method still works.
 
 **Weather is empty.** Set your city in Settings → Weather location, and check your internet connection. You can always
 type a temperature by hand.
+
+**Check for updates says it could not check.** It needs an internet connection and GitHub to be reachable. Nothing is
+changed by a failed check. If the in-app install is refused (for example the checksum did not match), use **Open release
+page** and install the downloaded file yourself.
 
 **I deleted something by mistake.** There is no undo, but there is a backup: **Settings → Backup and restore → Restore
 from a file…** and choose the newest automatic or manual backup.

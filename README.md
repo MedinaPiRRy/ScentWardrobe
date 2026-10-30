@@ -36,6 +36,7 @@ Built with Electron, React, TypeScript and SQLite. Runs on Windows and macOS (In
 - **Stats.** Most and least worn, wears and ml per month, leaderboards, bottles running low, cost per wear.
 - **Prices and currency.** Per bottle: what you paid and a market price you looked up (with date and where), price per ml, how much you saved or overpaid. Pick your currency in Settings.
 - **Adding fragrances.** Fuzzy search over your library and an optional imported dataset, a single Fragrantica page link, a whole Fragrantica profile (Have / Want / Had / custom shelves) with a preview first, a pasted list or CSV, or a manual form.
+- **Updates.** A **Check for updates** button (bottom of the sidebar and in Settings) asks GitHub for the newest release, shows its notes, and on Windows can download the installer, verify its checksum, back up your data and start it. Nothing is checked automatically.
 - **Safety.** Zip backup and restore, a weekly automatic backup, CSV export, light and dark themes.
 
 Details for each feature are in [INSTRUCTIONS.md](INSTRUCTIONS.md).
@@ -48,9 +49,9 @@ This project is as much about how it is built as what it does.
 - **SQLite with versioned migrations.** Ten migrations (`PRAGMA user_version`), each run in a transaction. Rules that must never be broken, such as the wishlist note, are enforced by database triggers as a last line of defence behind the API. A test builds a library at *every* schema version and upgrades it to the current one without losing a row.
 - **Pure engines.** The layering and recommendation logic are framework-free TypeScript in `src/shared`, tested without Electron or a database.
 - **Careful data handling.** Backups use SQLite's online backup (WAL-safe), restores validate the archive (size limits, integrity check, version check) and swap the file in atomically with a safety copy first, imports skip duplicates and survive damaged lines, and a database from a *newer* app version is refused rather than silently downgraded.
-- **Security posture.** `contextIsolation` and sandbox on, no Node in the renderer, a strict Content-Security-Policy, navigation and pop-ups locked down, a path-safe image protocol, downloads limited to Fragrantica's own hosts with size and time caps, CSV export that neutralises spreadsheet formulas, and web content from importers treated as untrusted (length limits, no scripts, no permissions).
+- **Security posture.** `contextIsolation` and sandbox on, no Node in the renderer, a strict Content-Security-Policy, navigation and pop-ups locked down, a path-safe image protocol, downloads limited to Fragrantica's own hosts with size and time caps, an updater that only talks to this repository's releases, verifies the installer's SHA-256 against the checksum GitHub publishes and backs up first, CSV export that neutralises spreadsheet formulas, and web content from importers treated as untrusted (length limits, no scripts, no permissions).
 - **Accessibility and layout.** Dialogs trap focus, Escape closes only the top layer, muted text meets WCAG AA contrast in both themes (checked with axe-core), and the UI is checked from 1100x640 up.
-- **Automated tests: 434 tests in 37 files**, run under Electron's own Node so the native SQLite module matches. They cover migrations, wear and bottle logic, backup and restore, the importers (including hostile input), both scoring engines, the calendar maths (including daylight-saving boundaries), price rounding, security helpers and performance with a 400-fragrance, 6,000-wear library.
+- **Automated tests: 446 tests in 38 files**, run under Electron's own Node so the native SQLite module matches. They cover migrations, wear and bottle logic, backup and restore, the importers (including hostile input), both scoring engines, the calendar maths (including daylight-saving boundaries), price rounding, security helpers and performance with a 400-fragrance, 6,000-wear library.
 
 ## Tech stack, and why
 
@@ -127,7 +128,7 @@ More in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Pushing a tag such as `v1.0.
 
 ## Privacy
 
-Your library never leaves your computer. The only network traffic is: current weather and city search from [Open-Meteo](https://open-meteo.com) (only the coordinates of the city you pick are sent), and Fragrantica pages and pictures when *you* ask for an import. There is no account, telemetry or analytics.
+Your library never leaves your computer. The only network traffic is: current weather and city search from [Open-Meteo](https://open-meteo.com) (only the coordinates of the city you pick are sent), Fragrantica pages and pictures when *you* ask for an import, and this repository's GitHub releases when *you* press **Check for updates** (no data about you or your library is sent). The app never checks for updates on its own. There is no account, telemetry or analytics.
 
 ## Credits and licence
 
