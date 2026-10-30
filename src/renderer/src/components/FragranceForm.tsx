@@ -1,3 +1,5 @@
+import PriceFields, { EMPTY_PRICE, type PriceValues } from './PriceFields'
+import { parsePrice } from '../lib/money'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type {
   BottleType,
@@ -126,6 +128,7 @@ export default function FragranceForm({ mode, initial, prefill, defaultWardrobe,
   const [bottleType, setBottleType] = useState<BottleType>('full bottle')
   const [bottleSize, setBottleSize] = useState('100')
   const [pct, setPct] = useState(100)
+  const [priceVals, setPriceVals] = useState<PriceValues>(EMPTY_PRICE)
   const [dislike, setDislike] = useState('')
   const [hadYears, setHadYears] = useState('')
   const [hadMemory, setHadMemory] = useState('')
@@ -176,7 +179,9 @@ export default function FragranceForm({ mode, initial, prefill, defaultWardrobe,
       if (wardrobe === 'collection') {
         const sz = parseFloat(bottleSize)
         if (!(sz > 0)) errs.push('Enter a bottle size greater than 0 ml.')
-        placement.bottle = { type: bottleType, sizeMl: sz, remainingMl: Math.round(sz * pct) / 100 }
+        const pp = parsePrice(priceVals.price)
+        if (pp.error) errs.push(pp.error)
+        placement.bottle = { type: bottleType, sizeMl: sz, remainingMl: Math.round(sz * pct) / 100, price: pp.value, boughtAt: priceVals.boughtAt, purchaseDate: priceVals.purchaseDate }
       }
     }
     setProblems(errs)
@@ -393,6 +398,7 @@ export default function FragranceForm({ mode, initial, prefill, defaultWardrobe,
                   Amount left: <span className="text-brass-400">{pct}%</span>
                   <input type="range" min={0} max={100} step={5} value={pct} onChange={(e) => setPct(+e.target.value)} className="block w-64 accent-[#c4964a]" />
                 </label>
+                <PriceFields value={priceVals} onChange={setPriceVals} idPrefix="form-price" />
               </div>
             )}
           </fieldset>

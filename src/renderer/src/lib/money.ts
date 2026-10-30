@@ -64,3 +64,11 @@ export function compareBottle(b: Pick<Bottle, 'price' | 'marketPrice' | 'sizeMl'
     marketPerMl: market != null && b.sizeMl > 0 ? Math.round((market / b.sizeMl) * 100) / 100 : null
   }
 }
+
+/** Reads a typed price: blank means "none". Accepts a decimal comma. Anything else that is not a number of 0 or more is an error. */
+export function parsePrice(text: string): { value: number | null; error: string | null } {
+  const t = text.trim().replace(',', '.')
+  if (t === '') return { value: null, error: null }
+  if (!/^\d+(\.\d+)?$/.test(t)) return { value: null, error: 'Enter the price as a number, for example 89.90.' }
+  return { value: Math.round(parseFloat(t) * 100) / 100, error: null }
+}

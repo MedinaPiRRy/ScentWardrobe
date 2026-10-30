@@ -251,7 +251,7 @@ function checkBottle(b: BottleInput): void {
     throw new AppError('INVALID', 'Remaining amount must be between 0 and the bottle size.')
   }
   if (b.mlPerSpray != null && !(b.mlPerSpray > 0)) throw new AppError('INVALID', 'ml per spray must be greater than 0.')
-  if (b.price != null && b.price < 0) throw new AppError('INVALID', 'Price cannot be negative.')
+  if (b.price != null && !(Number.isFinite(b.price) && b.price >= 0)) throw new AppError('INVALID', 'Price cannot be negative.')
   if (b.marketPrice != null && !(b.marketPrice >= 0)) throw new AppError('INVALID', 'Market price cannot be negative.')
 }
 

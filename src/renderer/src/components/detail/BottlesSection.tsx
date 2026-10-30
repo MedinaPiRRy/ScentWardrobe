@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import type { Bottle, BottleInput, BottleStatus, BottleType, FragranceDetail, HadReason } from '@shared/types'
 import { bottleStats, formatMl, LOW_LEVEL_THRESHOLD } from '../../lib/bottles'
-import { compareBottle, formatMoney, useCurrency } from '../../lib/money'
+import { compareBottle, formatMoney, parsePrice, useCurrency } from '../../lib/money'
 import { dateKeyOf } from '../../lib/calendar'
 import { ghostBtn, Modal, primaryBtn, SizePicker } from '../Dialogs'
 
 const TYPES: BottleType[] = ['full bottle', 'travel/mini', 'decant', 'sample']
 const field = 'mt-1 w-full rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-sm text-cream'
 
-function BottleFormDialog({ bottle, onCancel, onSubmit, error, vial }: { bottle: Bottle | null; onCancel: () => void; onSubmit: (b: BottleInput) => void; error: string | null; vial: boolean }) {
+function BottleFormDialog({ bottle, onCancel, onSubmit, error, vial, focusPrice }: { bottle: Bottle | null; onCancel: () => void; onSubmit: (b: BottleInput) => void; error: string | null; vial: boolean; focusPrice?: boolean }) {
   const [type, setType] = useState<BottleType>(bottle?.type ?? (vial ? 'sample' : 'full bottle'))
   const [size, setSize] = useState(String(bottle?.sizeMl ?? (vial ? 2 : 100)))
   const [remaining, setRemaining] = useState(bottle ? String(bottle.remainingMl) : '')
@@ -33,12 +33,14 @@ function BottleFormDialog({ bottle, onCancel, onSubmit, error, vial }: { bottle:
     if (!(sizeMl > 0)) return setProblem('Enter a size greater than 0 ml.')
     if (!(rem >= 0 && rem <= sizeMl)) return setProblem('Remaining must be between 0 and the bottle size.')
     if (!(mlPerSpray > 0)) return setProblem('ml per spray must be greater than 0.')
-    const marketPrice = market.trim() === '' ? null : parseFloat(market)
+    const paid = parsePrice(price)
+    if (paid.error) return setProblem(paid.error)
+    const marketPrice = market.trim() === '' ? null : parseFloat(market.replace(',', '.'))
     if (marketPrice != null && !(marketPrice >= 0)) return setProblem('Enter a market price of 0 or more, or leave it blank.')
     setProblem(null)
     onSubmit({
       type, sizeMl, remainingMl: rem, mlPerSpray,
-      price: price.trim() === '' ? null : parseFloat(price),
+      price: paid.value,
       boughtAt, purchaseDate, openedDate, batchCode: batch,
       marketPrice, marketCheckedOn: marketPrice == null ? null : marketOn || dateKeyOf(new Date()), marketSource: marketPrice == null ? null : marketSource,
       status: !bottle ? 'active' : status === 'active' && rem === 0 ? 'empty' : status === 'empty' && rem > 0 ? 'active' : status
@@ -72,7 +74,7 @@ function BottleFormDialog({ bottle, onCancel, onSubmit, error, vial }: { bottle:
         </label>
         <label>
           Price paid ({currency}, optional)
-          <input type="number" step="any" min="0" value={price} onChange={(e) => setPrice(e.target.value)} className={field} />
+          <input inputMode="decimal" autoFocus={focusPrice} value={price} onChange={(e) => setPrice(e.target.value)} className={field} placeholder="e.g. 89.90" />
         </label>
         <label>
           Where bought
@@ -162,6 +164,7 @@ function PriceLine({ b, currency }: { b: Bottle; currency: string }) {
 
 export default function BottlesSection({ d, onChanged, onNoBottlesLeft, say }: { d: FragranceDetail; onChanged: () => void; /** The last active bottle is gone (empty, sold or gifted). */ onNoBottlesLeft: (reason: HadReason) => void; say: (m: string) => void }) {
   const [editing, setEditing] = useState<Bottle | 'new' | null>(null)
+  const [focusPrice, setFocusPrice] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const avg = d.performance.avgSprays
   const currency = useCurrency()
@@ -205,7 +208,7 @@ export default function BottlesSection({ d, onChanged, onNoBottlesLeft, say }: {
                   {st.low && <span className="ml-2 rounded bg-red-900/60 px-1.5 py-0.5 text-[10px] uppercase text-red-200">Running low</span>}
                 </div>
                 <div className="flex gap-1">
-                  <button className="rounded border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700" onClick={() => { setError(null); setEditing(b) }}>
+                  <button className="rounded border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700" onClick={() => { setError(null); setFocusPrice(false); setEditing(b) }}>
                     Edit
                   </button>
                   {b.status === 'active' && (
@@ -230,15 +233,20 @@ export default function BottlesSection({ d, onChanged, onNoBottlesLeft, say }: {
                 {b.batchCode && ` · batch ${b.batchCode}`}
               </div>
               <PriceLine b={b} currency={currency} />
+              {b.price == null && b.status === 'active' && (
+                <button className="mt-1 text-xs text-brass-400 underline hover:text-brass-500" onClick={() => { setError(null); setFocusPrice(true); setEditing(b) }}>
+                  Add price
+                </button>
+              )}
             </div>
           )
         })}
       </div>
-      <button className={`${ghostBtn} mt-3`} onClick={() => { setError(null); setEditing('new') }}>
+      <button className={`${ghostBtn} mt-3`} onClick={() => { setError(null); setFocusPrice(false); setEditing('new') }}>
         + Add bottle
       </button>
       <p className="mt-1 text-[11px] text-cream/35">Low-level warning appears under {Math.round(LOW_LEVEL_THRESHOLD * 100)}%.</p>
-      {editing && <BottleFormDialog vial={d.wardrobe !== 'collection'} bottle={editing === 'new' ? null : editing} error={error} onCancel={() => setEditing(null)} onSubmit={save} />}
+      {editing && <BottleFormDialog focusPrice={focusPrice} vial={d.wardrobe !== 'collection'} bottle={editing === 'new' ? null : editing} error={error} onCancel={() => setEditing(null)} onSubmit={save} />}
     </div>
   )
 }

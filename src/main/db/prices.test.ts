@@ -84,3 +84,30 @@ describe('market prices', () => {
     expect(csv).toContain('80,100,2026-10-01,Notino')
   })
 })
+
+describe('price paid when a bottle is created', () => {
+  it('is saved on the bottle when a fragrance goes to My Collection', () => {
+    const db = openDatabase(':memory:')
+    const r = createFragrance(db, { name: 'P', house: 'H', notes: [], accords: [] }, { to: 'collection', bottle: { type: 'decant', sizeMl: 10, price: 24.5, boughtAt: 'Decant shop', purchaseDate: '2026-09-01' } })
+    if (!r.ok) throw new Error(r.message)
+    expect(getFragrance(db, r.data.id)!.bottles[0]).toMatchObject({ type: 'decant', sizeMl: 10, price: 24.5, boughtAt: 'Decant shop', purchaseDate: '2026-09-01' })
+  })
+  it('is optional, and refuses negative or non-numeric values', () => {
+    const db = openDatabase(':memory:')
+    const ok = createFragrance(db, { name: 'A', house: 'H', notes: [], accords: [] }, { to: 'collection', bottle: { type: 'full bottle', sizeMl: 50 } })
+    expect(ok.ok && getFragrance(db, ok.data.id)!.bottles[0].price).toBe(null)
+    for (const price of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const bad = createFragrance(db, { name: `B${price}`, house: 'H', notes: [], accords: [] }, { to: 'collection', bottle: { type: 'full bottle', sizeMl: 50, price } })
+      expect(bad.ok).toBe(false)
+    }
+    // the failed attempts left nothing behind
+    expect((db.prepare('SELECT count(*) AS c FROM fragrances').get() as { c: number }).c).toBe(1)
+  })
+  it('can be added later to a bottle that has none (an imported placeholder)', () => {
+    const { db, mk } = setup()
+    const f = mk('Placeholder')
+    const id = bottleId(db, f)
+    expect(updateBottle(db, id, { type: 'full bottle', sizeMl: 100, price: 75 }).ok).toBe(true)
+    expect(getFragrance(db, f)!.bottles[0]).toMatchObject({ price: 75, sizeMl: 100 })
+  })
+})

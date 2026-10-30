@@ -132,6 +132,11 @@ export interface NewBottleInput {
   sizeMl: number
   /** Defaults to a full bottle. */
   remainingMl?: number
+  /** What I paid, in my currency. */
+  price?: number | null
+  boughtAt?: string | null
+  /** 'YYYY-MM-DD' */
+  purchaseDate?: string | null
 }
 
 export interface MoveRequest {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareBottle, formatMoney, isCurrencyCode } from './money'
+import { compareBottle, formatMoney, isCurrencyCode, parsePrice } from './money'
 
 describe('compareBottle', () => {
   it('reports savings when I paid less than the market price', () => {
@@ -48,5 +48,19 @@ describe('rounding edge cases', () => {
     expect(c.paidPerMl).toBeNull()
     expect(c.saved).toBe(50)
     expect(compareBottle({ price: 0, marketPrice: 0, sizeMl: 10 })).toMatchObject({ saved: 0, savedPercent: null, paidPerMl: 0 })
+  })
+})
+
+describe('parsePrice', () => {
+  it('reads blank, decimals and decimal commas', () => {
+    expect(parsePrice('')).toEqual({ value: null, error: null })
+    expect(parsePrice('  ')).toEqual({ value: null, error: null })
+    expect(parsePrice('89.9')).toEqual({ value: 89.9, error: null })
+    expect(parsePrice('89,90')).toEqual({ value: 89.9, error: null })
+    expect(parsePrice('0')).toEqual({ value: 0, error: null })
+    expect(parsePrice('10.005').value).toBe(10.01)
+  })
+  it('rejects anything that is not a plain positive number', () => {
+    for (const t of ['abc', '-5', '1e3', '12 euro', '$5', '1.2.3', '--']) expect(parsePrice(t).error, t).toBeTruthy()
   })
 })

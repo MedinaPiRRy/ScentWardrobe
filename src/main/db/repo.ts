@@ -337,9 +337,10 @@ export function applyMove(db: Db, req: MoveRequest, opts: MoveOptions = {}): Fra
         if (!b) throw new AppError('BOTTLE_REQUIRED', 'Choose a bottle type and size to add this to your collection.')
         if (!(b.sizeMl > 0)) throw new AppError('INVALID', 'Bottle size must be greater than 0 ml.')
         const remaining = Math.min(Math.max(b.remainingMl ?? b.sizeMl, 0), b.sizeMl)
+        if (b.price != null && !(Number.isFinite(b.price) && b.price >= 0)) throw new AppError('INVALID', 'The price must be 0 or more.')
         db.prepare(
-          'INSERT INTO bottles (fragrance_id, type, size_ml, remaining_ml) VALUES (?, ?, ?, ?)'
-        ).run(req.fragranceId, b.type, b.sizeMl, remaining)
+          'INSERT INTO bottles (fragrance_id, type, size_ml, remaining_ml, price, bought_at, purchase_date) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).run(req.fragranceId, b.type, b.sizeMl, remaining, b.price ?? null, clean(b.boughtAt), clean(b.purchaseDate))
       }
       if (before?.wardrobe === 'had') archiveHadDetails(db, req.fragranceId)
     }

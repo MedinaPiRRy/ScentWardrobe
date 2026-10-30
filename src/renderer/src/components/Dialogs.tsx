@@ -1,6 +1,8 @@
 import { useRef, useState, type ReactNode } from 'react'
 import type { BottleType, FragranceSummary, NewBottleInput } from '@shared/types'
 import { useEscapeClose, useFocusTrap } from '../lib/dialog'
+import { parsePrice } from '../lib/money'
+import PriceFields, { EMPTY_PRICE, type PriceValues } from './PriceFields'
 import { QUICK_SIZES_ML } from '../lib/shelf'
 
 export function Modal({ title, onClose, children, wide, xl }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; xl?: boolean }) {
@@ -146,9 +148,11 @@ export function BottleDialog({
   const [type, setType] = useState<BottleType>('full bottle')
   const [size, setSize] = useState('100')
   const [pct, setPct] = useState(100)
+  const [priceVals, setPriceVals] = useState<PriceValues>(EMPTY_PRICE)
   const [touched, setTouched] = useState(false)
   const sizeMl = parseFloat(size)
-  const valid = sizeMl > 0
+  const priceParsed = parsePrice(priceVals.price)
+  const valid = sizeMl > 0 && !priceParsed.error
 
   return (
     <Modal title={`Add ${fragrance.name} to your collection`} onClose={onCancel}>
@@ -157,7 +161,7 @@ export function BottleDialog({
           e.preventDefault()
           setTouched(true)
           if (!valid) return
-          onSubmit({ type, sizeMl, remainingMl: Math.round(sizeMl * pct) / 100 })
+          onSubmit({ type, sizeMl, remainingMl: Math.round(sizeMl * pct) / 100, price: priceParsed.value, boughtAt: priceVals.boughtAt, purchaseDate: priceVals.purchaseDate })
         }}
       >
         <label className="block text-sm text-cream/80">Bottle type</label>
@@ -180,9 +184,10 @@ export function BottleDialog({
         </label>
         <input type="range" min={0} max={100} step={5} value={pct} onChange={(e) => setPct(+e.target.value)} className="w-full accent-[#c4964a]" />
         <p className="text-xs text-cream/50">Leave at 100% for a full bottle, or lower it if it's already partly used.</p>
+        <PriceFields value={priceVals} onChange={setPriceVals} idPrefix="dlg-price" />
         {((touched && !valid) || serverError) && (
           <p className="mt-2 text-sm text-red-300" role="alert">
-            {touched && !valid ? 'Enter a bottle size greater than 0 ml.' : serverError}
+            {touched && !valid ? (priceParsed.error ?? 'Enter a bottle size greater than 0 ml.') : serverError}
           </p>
         )}
         <div className="mt-6 flex justify-end gap-2">
