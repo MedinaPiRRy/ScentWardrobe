@@ -1,3 +1,5 @@
+import RatingSuggestions from '../components/RatingSuggestions'
+import { RateDialog } from '../components/RatingPicker'
 import { hasMod, MOD_LABEL } from '../lib/platform'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -17,12 +19,14 @@ import { THEMES } from '../components/themes'
 import {
   filterFragrances,
   isRackItem,
+  RATING_FILTER_LABEL,
   SEASONS,
   SORT_LABELS,
   sortFragrances,
   HAD_REASON_LABEL,
   WARDROBE_LABEL,
   WARDROBES,
+  type RatingFilter,
   type SortKey
 } from '../lib/shelf'
 
@@ -42,6 +46,8 @@ export default function WardrobesPage() {
   const [tab, setTab] = useState<WardrobeKind>('collection')
   const [query, setQuery] = useState('')
   const [season, setSeason] = useState<Season | 'all'>('all')
+  const [ratingFilter, setRatingFilter] = useState<RatingFilter>('all')
+  const [rateFor, setRateFor] = useState<FragranceSummary | null>(null)
   const [sort, setSort] = useState<SortKey>('shelf')
   const [menu, setMenu] = useState<{ f: FragranceSummary; x: number; y: number } | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
@@ -117,8 +123,8 @@ export default function WardrobesPage() {
   }, [params, setParams])
 
   const inTab = useMemo(() => sortFragrances(all.filter((f) => f.wardrobe === tab), 'shelf'), [all, tab])
-  const filtering = query.trim() !== '' || season !== 'all'
-  const visible = useMemo(() => sortFragrances(filterFragrances(inTab, query, season), sort), [inTab, query, season, sort])
+  const filtering = query.trim() !== '' || season !== 'all' || ratingFilter !== 'all'
+  const visible = useMemo(() => sortFragrances(filterFragrances(inTab, query, season, ratingFilter), sort), [inTab, query, season, ratingFilter, sort])
   const canDrag = !filtering && sort === 'shelf'
 
   const counts = useMemo(() => {
@@ -138,9 +144,9 @@ export default function WardrobesPage() {
 
   const hadVisible = useMemo(() => {
     if (tab !== 'had') return visible
-    const extra = filterFragrances(pastCards.map((c) => c.f), query, season)
+    const extra = filterFragrances(pastCards.map((c) => c.f), query, season, ratingFilter)
     return [...visible, ...extra]
-  }, [tab, visible, pastCards, query, season])
+  }, [tab, visible, pastCards, query, season, ratingFilter])
 
   const captions = useMemo(() => {
     const m = new Map<number, string>()
@@ -167,10 +173,10 @@ export default function WardrobesPage() {
     const isVial = (b: { type: string }) => b.type === 'decant' || b.type === 'sample'
     const holders = all.filter((f) => (f.wardrobe === 'collection' || f.wardrobe === 'wishlist' || f.wardrobe === 'to_try') && f.bottles.some(isVial))
     const rank = (f: FragranceSummary) => (f.wardrobe === 'collection' ? 0 : 1)
-    return sortFragrances(filterFragrances(holders, query, season), 'name')
+    return sortFragrances(filterFragrances(holders, query, season, ratingFilter), 'name')
       .sort((a, b) => rank(a) - rank(b))
       .map((f) => ({ ...f, bottles: f.bottles.filter(isVial) }))
-  }, [tab, all, query, season])
+  }, [tab, all, query, season, ratingFilter])
   const vialCaptions = useMemo(() => {
     const m = new Map<number, string>()
     for (const f of rack) if (f.wardrobe !== 'collection' && f.wardrobe) m.set(f.id, `on my ${WARDROBE_LABEL[f.wardrobe]}`)
@@ -249,9 +255,20 @@ export default function WardrobesPage() {
     return null
   }
 
+  const setRating = async (id: number, rating: number | null) => {
+    const r = await window.api.wardrobe.setRating(id, rating, 'shelf')
+    if (!r.ok) return say(r.message)
+    // Show the new number straight away, then reload the lists.
+    setAll((prev) => prev.map((f) => (f.id === id ? { ...f, rating } : f)))
+    setRateFor((cur) => (cur && cur.id === id ? { ...cur, rating } : cur))
+    setRev((v) => v + 1)
+    void refresh()
+  }
+
   const menuItems = (f: FragranceSummary): MenuItem[] => [
     { label: 'Open', onSelect: () => openDetail(f) },
     { label: 'Log a wear', onSelect: () => setWearFor({ fragranceId: f.id }) },
+    ...(f.wardrobe ? [{ label: f.rating != null ? `Rate… (now ${f.rating}/10)` : 'Rate…', onSelect: () => setRateFor(f) }] : []),
     ...KINDS.filter((k) => k !== f.wardrobe).map((k) => ({ label: `Move to ${WARDROBE_LABEL[k]}`, onSelect: () => void startMove(f, k) }))
   ]
 
@@ -262,7 +279,8 @@ export default function WardrobesPage() {
     sepia: tab === 'had',
     draggable: canDrag,
     onOpen: (f: FragranceSummary) => openDetail(f),
-    onContextMenu: (f: FragranceSummary, x: number, y: number) => setMenu({ f, x, y })
+    onContextMenu: (f: FragranceSummary, x: number, y: number) => setMenu({ f, x, y }),
+    onRate: (f: FragranceSummary, rating: number | null) => void setRating(f.id, rating)
   }
 
   const totalHere = inTab.length
@@ -297,6 +315,13 @@ export default function WardrobesPage() {
               </option>
             ))}
           </select>
+          <select value={ratingFilter} onChange={(e) => setRatingFilter(e.target.value as RatingFilter)} className="rounded-md border border-ink-600 bg-ink-900 px-2 py-2 text-sm" aria-label="Rating filter">
+            {(Object.keys(RATING_FILTER_LABEL) as RatingFilter[]).map((k) => (
+              <option key={k} value={k}>
+                {RATING_FILTER_LABEL[k]}
+              </option>
+            ))}
+          </select>
           <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className="rounded-md border border-ink-600 bg-ink-900 px-2 py-2 text-sm" aria-label="Sort">
             {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
               <option key={k} value={k}>
@@ -309,6 +334,8 @@ export default function WardrobesPage() {
           </button>
         </div>
       </header>
+
+      {tab === 'collection' && <RatingSuggestions version={rev} onChanged={() => void refresh()} say={say} />}
 
       {elsewhere.length > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-cream/60">
@@ -384,6 +411,14 @@ export default function WardrobesPage() {
         </button>
       )}
 
+      {rateFor && (
+        <RateDialog
+          name={rateFor.name}
+          current={rateFor.rating}
+          onPick={(v) => void setRating(rateFor.id, v)}
+          onClose={() => setRateFor(null)}
+        />
+      )}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.f)} onClose={() => setMenu(null)} />}
 
       {pending?.kind === 'impression' && (

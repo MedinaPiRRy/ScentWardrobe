@@ -108,3 +108,17 @@ describe('re-rating suggestions from the database', () => {
     expect(listRatingSuggestions(db, now)).toEqual([])
   })
 })
+
+describe('CSV export of ratings', () => {
+  it('has the rating and the day it last changed', async () => {
+    const { buildCollectionCsv } = await import('./exportCsv')
+    const { db, mk } = setup()
+    const f = mk('Rated')
+    setRating(db, f, 8)
+    const { csv } = buildCollectionCsv(db)
+    expect(csv.split('\r\n')[0]).toMatch(/My rating \(1-10\).*Rating last changed$/)
+    const row = csv.split('\r\n')[1]
+    expect(row).toMatch(/,8,/)
+    expect(row.endsWith(`,${new Date().toISOString().slice(0, 4)}`) || /\d{4}-\d{2}-\d{2}$/.test(row)).toBe(true)
+  })
+})

@@ -70,3 +70,22 @@ describe('arrayMove', () => {
     expect(src).toEqual([1, 2, 3, 4])
   })
 })
+
+describe('rating filter and sort', () => {
+  const items = [make({ id: 1, name: 'Nine', rating: 9 }), make({ id: 2, name: 'Five', rating: 5 }), make({ id: 3, name: 'Two', rating: 2 }), make({ id: 4, name: 'None', rating: null }), make({ id: 5, name: 'Seven', rating: 7 })]
+  const names = (f: FragranceSummary[]) => f.map((x) => x.name)
+  it('filters by band', () => {
+    expect(names(filterFragrances(items, '', 'all', 'top'))).toEqual(['Nine', 'Seven'])
+    expect(names(filterFragrances(items, '', 'all', 'middle'))).toEqual(['Five'])
+    expect(names(filterFragrances(items, '', 'all', 'low'))).toEqual(['Two'])
+    expect(names(filterFragrances(items, '', 'all', 'unrated'))).toEqual(['None'])
+    expect(filterFragrances(items, '', 'all', 'all')).toHaveLength(5)
+  })
+  it('combines with the text search', () => {
+    expect(names(filterFragrances(items, 'n', 'all', 'top'))).toEqual(['Nine', 'Seven'])
+    expect(filterFragrances(items, 'zzz', 'all', 'top')).toEqual([])
+  })
+  it('sorts the best rated first with unrated last', () => {
+    expect(names(sortFragrances(items, 'rating'))).toEqual(['Nine', 'Seven', 'Five', 'Two', 'None'])
+  })
+})

@@ -19,7 +19,7 @@ const HEADER = [
   'Wardrobe', 'Name', 'House', 'Year', 'Concentration', 'Gender', 'Perfumers', 'My rating (1-10)', 'Bottles', 'Total ml', 'Remaining ml',
   'Wears', 'Last worn', 'Usual sprays', 'Avg sprays', 'Avg projection (1-5)', 'Avg longevity (h)', 'Compliments', 'Top accords', 'Top notes', 'Heart notes', 'Base notes',
   'Other notes', 'What it smells like to me', 'Why I dislike it', 'Years I wore it', 'Memory', 'Why it left', 'Source URL',
-  'Paid', 'Market price', 'Market price checked', 'Market price source'
+  'Paid', 'Market price', 'Market price checked', 'Market price source', 'Rating last changed'
 ]
 
 const WARDROBE_LABEL = { collection: 'My Collection', wishlist: 'Wishlist', to_try: 'To Try', had: 'Had', garbage: 'Garbage Perfumes' } as const
@@ -39,6 +39,7 @@ export function buildCollectionCsv(db: Db, scope: 'all' | 'collection' = 'all'):
   const bottles = db.prepare(`SELECT count(*) AS n, coalesce(sum(size_ml), 0) AS size, coalesce(sum(remaining_ml), 0) AS rem FROM bottles WHERE fragrance_id = ? AND status = 'active'`)
   const prices = db.prepare(`SELECT sum(price) AS paid, sum(market_price) AS market, max(market_checked_on) AS checked,
     (SELECT market_source FROM bottles x WHERE x.fragrance_id = ? AND x.market_source IS NOT NULL ORDER BY x.market_checked_on DESC, x.id DESC LIMIT 1) AS source FROM bottles WHERE fragrance_id = ? AND status = 'active'`)
+  const lastRated = db.prepare('SELECT substr(max(rated_at), 1, 10) AS d FROM rating_history WHERE fragrance_id = ?')
   const wears = db.prepare('SELECT count(*) AS n, max(worn_at) AS last, avg(sprays) AS sprays, avg(projection) AS proj, avg(longevity_hours) AS lon, coalesce(sum(compliments), 0) AS comp FROM wear_log WHERE fragrance_id = ?')
   const accords = db.prepare('SELECT a.name FROM fragrance_accords fa JOIN accords a ON a.id = fa.accord_id WHERE fa.fragrance_id = ? ORDER BY fa.strength DESC LIMIT 5')
   const notes = db.prepare('SELECT n.name, fn.layer FROM fragrance_notes fn JOIN notes n ON n.id = fn.note_id WHERE fn.fragrance_id = ? ORDER BY n.name')
@@ -54,7 +55,7 @@ export function buildCollectionCsv(db: Db, scope: 'all' | 'collection' = 'all'):
       WARDROBE_LABEL[f.wardrobe], f.name, f.house, f.year, f.concentration, f.gender, f.perfumers, f.rating, b.n, round(b.size), round(b.rem), w.n, w.last?.slice(0, 16), f.default_sprays,
       round(w.sprays), round(w.proj), round(w.lon), w.comp, (accords.all(f.id) as { name: string }[]).map((a) => a.name).join('; '),
       byLayer('top'), byLayer('heart'), byLayer('base'), byLayer('general'), f.impression, f.dislike_note, f.had_years, f.had_memory, f.had_reason, f.source_url,
-      pr.paid, pr.market, pr.checked, pr.source
+      pr.paid, pr.market, pr.checked, pr.source, (lastRated.get(f.id) as { d: string | null }).d
     ])
   }
   return { csv: toCsv(rows), rows: frags.length }

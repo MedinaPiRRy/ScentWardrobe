@@ -4,6 +4,7 @@ import type { TempUnit } from '@shared/weather'
 import { PROJECTION_LABELS } from '../lib/performance'
 import { liveWeatherFields, shouldFetchLiveWeather, storedTempToText, typedTempToC } from '../lib/weatherFill'
 import { formatMl } from '../lib/bottles'
+import RatingPicker from './RatingPicker'
 import { ghostBtn, Modal, primaryBtn } from './Dialogs'
 
 const fieldBase = 'rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-sm text-cream'
@@ -71,6 +72,8 @@ export default function WearForm({ fragranceId, comboId, comboTitle, defaultSpra
   const [saving, setSaving] = useState(false)
   // Weather that came from the live lookup (not typed by me); the label disappears as soon as I change a field.
   const [live, setLive] = useState(false)
+  // Optional: how much I liked it today. It becomes my rating of the fragrance, so ratings can change as taste does.
+  const [likeRating, setLikeRating] = useState<number | null>(null)
   const weatherEdited = useRef(false)
 
   // The temperature box shows my own unit; stored values are always Celsius.
@@ -157,6 +160,7 @@ export default function WearForm({ fragranceId, comboId, comboTitle, defaultSpra
       projection,
       longevityHours: num(longevity),
       compliments: Math.max(0, parseInt(compliments, 10) || 0),
+      ...(!entry && !isCombo && likeRating != null ? { rating: likeRating } : {}),
       notes: notes || null,
       // A past date is a diary entry: it leaves the bottle alone unless this box is ticked.
       ...(isPast && takeFromBottle ? { takeFromBottle: true } : {})
@@ -270,6 +274,17 @@ export default function WearForm({ fragranceId, comboId, comboTitle, defaultSpra
             </select>
           </div>
         </div>
+
+        {!entry && !isCombo && (
+          <div className="col-span-2">
+            <div className="flex items-baseline gap-2">
+              How did you like it today? <span className="text-xs text-cream/55">(optional{d?.rating != null ? `, you currently rate it ${d.rating}/10` : ', not rated yet'})</span>
+            </div>
+            <div className="mt-1">
+              <RatingPicker value={likeRating} onChange={setLikeRating} label="How much you liked it today" />
+            </div>
+          </div>
+        )}
 
         <div className="col-span-2">
           Projection

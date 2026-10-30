@@ -7,6 +7,7 @@ import BottleSvg from '../BottleSvg'
 import { ghostBtn, Modal, primaryBtn } from '../Dialogs'
 import AccordBars from './AccordBars'
 import BottlesSection from './BottlesSection'
+import RatingHistory from './RatingHistory'
 import CommunityCharts from './CommunityCharts'
 import Journal, { ImpressionEditor } from './Journal'
 import NotesPyramid from './NotesPyramid'
@@ -221,7 +222,7 @@ export default function DetailPanel({ id, rev, onClose, onChanged, onEdit, onMov
 
           {d.wardrobe && (
             <div className="mt-4 w-full">
-              <div className="mb-1 text-center text-[11px] uppercase tracking-wider text-cream/50">My rating {d.rating ? `· ${d.rating}/10` : ''}</div>
+              <div className="mb-1 text-center text-[11px] uppercase tracking-wider text-cream/50">My rating {d.rating ? `· ${d.rating}/10` : '· not rated yet'}</div>
               <div className="flex justify-center gap-0.5">
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                   <button
@@ -323,6 +324,12 @@ export default function DetailPanel({ id, rev, onClose, onChanged, onEdit, onMov
           <Section title="My performance">
             <PerformanceCard p={d.performance} community={d.community} />
           </Section>
+
+          {d.wardrobe && (
+            <Section title="My rating over time">
+              <RatingHistory history={d.ratingHistory} />
+            </Section>
+          )}
 
           <Section title="Wear history">
             {wears.length === 0 ? (

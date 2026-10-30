@@ -27,12 +27,14 @@ interface Props {
   sepia?: boolean
   /** Text for a small paper tag under a bottle, by fragrance id. */
   captions?: Map<number, string>
+  /** When given, hovering a bottle shows a quick 1-10 control. */
+  onRate?: (f: FragranceSummary, rating: number | null) => void
   onReorder: (orderedIds: number[]) => void
   onOpen: (f: FragranceSummary) => void
   onContextMenu: (f: FragranceSummary, x: number, y: number) => void
 }
 
-export default function Shelf({ items, theme, tone, slot = 152, scale = 1, showLevel, draggable, sepia, captions, onReorder, onOpen, onContextMenu }: Props) {
+export default function Shelf({ items, theme, tone, slot = 152, scale = 1, showLevel, draggable, sepia, captions, onRate, onReorder, onOpen, onContextMenu }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const [perRow, setPerRow] = useState(6)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -69,7 +71,7 @@ export default function Shelf({ items, theme, tone, slot = 152, scale = 1, showL
               <div className="relative" style={{ height: rowHeight }}>
                 <div className="relative flex h-full items-end gap-0 px-4 pb-0" style={{ paddingBottom: 14 }}>
                   {row.map((f) => (
-                    <Slot key={f.id} vialTag={!captions} f={f} slot={slot} scale={scale} tone={tone} sepia={sepia} showLevel={showLevel} draggable={draggable} onOpen={onOpen} onContextMenu={onContextMenu} />
+                    <Slot key={f.id} vialTag={!captions} onRate={onRate} f={f} slot={slot} scale={scale} tone={tone} sepia={sepia} showLevel={showLevel} draggable={draggable} onOpen={onOpen} onContextMenu={onContextMenu} />
                   ))}
                 </div>
                 <div className="absolute inset-x-0 bottom-0 h-3.5" style={theme.plank} />
@@ -99,8 +101,9 @@ export default function Shelf({ items, theme, tone, slot = 152, scale = 1, showL
   )
 }
 
-function Slot({ f, slot, scale, tone, sepia, showLevel, draggable, vialTag, onOpen, onContextMenu }: {
+function Slot({ f, slot, scale, tone, sepia, showLevel, draggable, vialTag, onRate, onOpen, onContextMenu }: {
   vialTag: boolean
+  onRate?: Props['onRate']
   f: FragranceSummary
   slot: number
   scale: number
@@ -160,6 +163,32 @@ function Slot({ f, slot, scale, tone, sepia, showLevel, draggable, vialTag, onOp
         >
           <div className="text-sm font-medium text-cream">{f.name}</div>
           <div className="text-xs text-brass-400">{f.house}</div>
+          <div className="mt-0.5 text-[11px] text-cream/70">{f.rating != null ? `Rated ${f.rating}/10` : 'Not rated yet'}</div>
+        </div>
+      )}
+      {onRate && hover && !isDragging && f.wardrobe && (
+        <div
+          className="absolute -bottom-1 left-1/2 z-40 flex -translate-x-1/2 gap-px rounded-full border border-brass-500/40 bg-ink-950/95 px-1.5 py-1 shadow-xl"
+          // Clicking a number must not open the bottle or start a drag.
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          role="radiogroup"
+          aria-label={`Rate ${f.name}`}
+        >
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+            <button
+              key={n}
+              role="radio"
+              aria-checked={f.rating === n}
+              aria-label={`${n} out of 10`}
+              title={f.rating === n ? 'Click again to clear' : `Rate ${n}/10`}
+              onClick={() => onRate(f, f.rating === n ? null : n)}
+              className={`h-4 w-3.5 rounded-sm text-[9px] font-medium leading-none ${f.rating != null && n <= f.rating ? 'bg-brass-500 text-[#17110b]' : 'text-cream/70 hover:bg-ink-600'}`}
+            >
+              {n}
+            </button>
+          ))}
         </div>
       )}
     </div>

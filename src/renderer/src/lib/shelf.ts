@@ -44,8 +44,34 @@ export function matchesQuery(f: FragranceSummary, query: string): boolean {
   return q.split(/\s+/).every((word) => hay.includes(word))
 }
 
-export function filterFragrances(items: FragranceSummary[], query: string, season: Season | 'all'): FragranceSummary[] {
-  return items.filter((f) => matchesQuery(f, query) && (season === 'all' || f.seasons.includes(season)))
+export type RatingFilter = 'all' | 'top' | 'middle' | 'low' | 'unrated'
+
+export const RATING_FILTER_LABEL: Record<RatingFilter, string> = {
+  all: 'Any rating',
+  top: 'Rated 7-10',
+  middle: 'Rated 4-6',
+  low: 'Rated 1-3',
+  unrated: 'Not rated yet'
+}
+
+export function matchesRating(f: Pick<FragranceSummary, 'rating'>, filter: RatingFilter): boolean {
+  const r = f.rating
+  switch (filter) {
+    case 'all':
+      return true
+    case 'unrated':
+      return r == null
+    case 'top':
+      return r != null && r >= 7
+    case 'middle':
+      return r != null && r >= 4 && r <= 6
+    case 'low':
+      return r != null && r <= 3
+  }
+}
+
+export function filterFragrances(items: FragranceSummary[], query: string, season: Season | 'all', rating: RatingFilter = 'all'): FragranceSummary[] {
+  return items.filter((f) => matchesQuery(f, query) && (season === 'all' || f.seasons.includes(season)) && matchesRating(f, rating))
 }
 
 const cmpText = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' })
