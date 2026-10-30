@@ -109,7 +109,7 @@ describe('backup and restore', () => {
     // rewrite the zip's db as if made by an old version: drop to schema 1 tables only is complex, so just downgrade the stamp
     const prepared = await prepareRestore(zip)
     const old = new Database(prepared.dbFile)
-    old.exec('DROP TABLE past_bottles; DROP TABLE wear_deductions; DROP INDEX ix_catalog_source_url; DROP INDEX ix_wear_log_day; ALTER TABLE fragrances DROP COLUMN default_sprays; ALTER TABLE wear_log DROP COLUMN backfilled; ALTER TABLE bottles DROP COLUMN market_price; ALTER TABLE bottles DROP COLUMN market_checked_on; ALTER TABLE bottles DROP COLUMN market_source; ALTER TABLE fragrances DROP COLUMN is_foreign; ALTER TABLE catalog_fragrances DROP COLUMN source_url; ALTER TABLE catalog_fragrances DROP COLUMN popularity; ALTER TABLE wear_log DROP COLUMN followup_dismissed;')
+    old.exec('DROP TABLE past_bottles; DROP TABLE wear_deductions; DROP INDEX ix_catalog_source_url; DROP INDEX ix_wear_log_day; ALTER TABLE fragrances DROP COLUMN default_sprays; ALTER TABLE wear_log DROP COLUMN backfilled; ALTER TABLE bottles DROP COLUMN market_price; ALTER TABLE bottles DROP COLUMN market_checked_on; ALTER TABLE bottles DROP COLUMN market_source; ALTER TABLE fragrances DROP COLUMN is_foreign; DROP TABLE rating_history; ALTER TABLE catalog_fragrances DROP COLUMN source_url; ALTER TABLE catalog_fragrances DROP COLUMN popularity; ALTER TABLE wear_log DROP COLUMN followup_dismissed;')
     old.pragma('user_version = 2')
     old.close()
     a.db.close()

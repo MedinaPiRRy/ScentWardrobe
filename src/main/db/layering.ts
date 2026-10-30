@@ -10,10 +10,10 @@ const MIN_RATED_WEARS = 2
 export function layerCandidates(db: Db): LayerItem[] {
   const frags = db
     .prepare(
-      `SELECT f.id, f.name, f.house FROM fragrances f JOIN wardrobe_items w ON w.fragrance_id = f.id AND w.wardrobe = 'collection'
+      `SELECT f.id, f.name, f.house, w.rating FROM fragrances f JOIN wardrobe_items w ON w.fragrance_id = f.id AND w.wardrobe = 'collection'
        ORDER BY f.house, f.name`
     )
-    .all() as { id: number; name: string; house: string }[]
+    .all() as { id: number; name: string; house: string; rating: number | null }[]
 
   const accords = db.prepare(`SELECT a.name, fa.strength FROM fragrance_accords fa JOIN accords a ON a.id = fa.accord_id WHERE fa.fragrance_id = ? ORDER BY fa.strength DESC`)
   const notes = db.prepare(`SELECT n.name, n.family, fn.layer FROM fragrance_notes fn JOIN notes n ON n.id = fn.note_id WHERE fn.fragrance_id = ?`)
@@ -32,7 +32,8 @@ export function layerCandidates(db: Db): LayerItem[] {
       notes: (notes.all(f.id) as { name: string; family: string | null; layer: 'top' | 'heart' | 'base' | 'general' }[]).map((n) => ({ name: n.name, layer: n.layer, family: n.family })),
       seasons: c ? { winter: c.winter, spring: c.spring, summer: c.summer, fall: c.fall } : null,
       daynight: c ? { day: c.day, night: c.night } : null,
-      projection
+      projection,
+      rating: f.rating
     }
   })
 }

@@ -123,6 +123,8 @@ export interface FragranceDetail extends FragranceSummary {
   community: CommunityData | null
   impression: string | null
   pastBottles: PastBottle[]
+  /** Every change of my rating, newest first. */
+  ratingHistory: RatingChange[]
   bottles: Bottle[]
   journal: JournalEntry[]
 }
@@ -340,6 +342,8 @@ export interface WearInput {
   longevityHours?: number | null
   compliments?: number
   notes?: string | null
+  /** How much I liked it today (1-10). Only for a new wear of a fragrance: it also updates my rating of it. */
+  rating?: number | null
   /**
    * An entry added after the fact. By default a wear dated before today is backfilled. Backfilled wears never trigger
    * the "How long did it last?" prompt and do not take sprays from a bottle unless `takeFromBottle` is true.
@@ -556,4 +560,17 @@ export interface MemberImportResult {
   withoutDetails: number
   failed: { name: string; message: string }[]
   cancelled: boolean
+}
+
+// ---- rating history and suggestions ---------------------------------------------------------
+
+export type RatingSource = 'earlier' | 'detail' | 'shelf' | 'wear'
+
+export interface RatingChange {
+  id: number
+  /** null = I cleared the rating. */
+  rating: number | null
+  /** 'YYYY-MM-DD HH:MM:SS' local time */
+  ratedAt: string
+  source: RatingSource
 }

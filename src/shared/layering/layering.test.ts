@@ -313,3 +313,23 @@ describe('suggestPartners', () => {
     expect(suggestPartners(gourmand(), [])).toEqual([])
   })
 })
+
+describe('partner ranking and ratings', () => {
+  const mk = (id: number, name: string, rating: number | null): LayerItem => ({ id, name, accords: [{ name: 'woody', strength: 100 }, { name: 'fresh', strength: 60 }], notes: [], rating })
+  it('orders partners by rating without changing any pair score', () => {
+    const base = mk(1, 'Base', 7)
+    const plain = suggestPartners(base, [mk(2, 'Low', null), mk(3, 'High', null)])
+    const rated = suggestPartners(base, [mk(2, 'Low', 2), mk(3, 'High', 9)])
+    expect(rated.map((s) => s.item.name)).toEqual(['High', 'Low'])
+    expect(rated.find((s) => s.item.id === 2)!.score).toBe(plain.find((s) => s.item.id === 2)!.score)
+    expect(rated.find((s) => s.item.id === 3)!.score).toBe(plain.find((s) => s.item.id === 3)!.score)
+  })
+  it('a low-rated partner with a clearly better pairing is still listed', () => {
+    const base: LayerItem = { id: 1, name: 'Base', accords: [{ name: 'citrus', strength: 100 }], notes: [] }
+    const good: LayerItem = { id: 2, name: 'GoodButLow', accords: [{ name: 'woody', strength: 90 }, { name: 'citrus', strength: 40 }], notes: [], rating: 3 }
+    const clash: LayerItem = { id: 3, name: 'Clash', accords: [{ name: 'citrus', strength: 100 }], notes: [], rating: 8 }
+    const out = suggestPartners(base, [good, clash])
+    expect(out.map((s) => s.item.name)).toContain('GoodButLow')
+    expect(out).toHaveLength(2)
+  })
+})

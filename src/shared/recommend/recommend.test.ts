@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activityFit, assumedTemperature, dayNightFit, daysSince, effectiveSeason, humidityFit, longevityFit, ratingPoints, recommend, rotationPoints, seasonFit, seasonOfMonth, temperatureFit, WEIGHTS } from './engine'
+import { activityFit, assumedTemperature, dayNightFit, daysSince, effectiveSeason, humidityFit, longevityFit, recommend, rotationPoints, seasonFit, seasonOfMonth, temperatureFit, WEIGHTS } from './engine'
 import { profileFor, targetWarmth, warmthIndex } from './activities'
 import { explain, humidityWord, temperatureWord } from './explain'
 import type { RecContext, RecItem } from './types'
@@ -193,16 +193,41 @@ describe('rotation', () => {
   })
 })
 
-describe('rating tiebreak', () => {
-  it('only nudges, by at most 2 points', () => {
-    expect(ratingPoints(10)).toBe(2)
-    expect(ratingPoints(1)).toBe(-2)
-    expect(ratingPoints(null)).toBe(0)
-    const a = item('Loved', { woody: 100 }, { rating: 10 })
-    const b = item('Meh', { woody: 100 }, { rating: 3 })
-    const r = recommend([b, a], ctx())
+describe('rating steers recommendations', () => {
+  const dayAgo = (n: number) => `2026-07-${String(15 - n).padStart(2, '0')} 09:00`
+  it('a favourite clearly outranks a low-rated fragrance with the same fit', () => {
+    const loved = item('Loved', { woody: 100 }, { rating: 9, lastWornAt: dayAgo(5) })
+    const meh = item('Meh', { woody: 100 }, { rating: 3, lastWornAt: dayAgo(5) })
+    const r = recommend([meh, loved], ctx())
     expect(r.ranked[0].name).toBe('Loved')
-    expect(r.ranked[0].score - r.ranked[1].score).toBeLessThanOrEqual(4)
+    expect(r.ranked[0].score - r.ranked[1].score).toBeGreaterThan(10)
+  })
+  it('unrated is neutral, shown as not rated yet, and equals a 5', () => {
+    const none = item('None', { woody: 100 }, { rating: null, lastWornAt: dayAgo(5) })
+    const five = item('Five', { woody: 100 }, { rating: 5, lastWornAt: dayAgo(5) })
+    const r = recommend([none, five], ctx())
+    const a = r.ranked.find((x) => x.name === 'None')!
+    const b = r.ranked.find((x) => x.name === 'Five')!
+    expect(a.score).toBe(b.score)
+    expect(a.breakdown.find((l) => l.key === 'rating')!.label).toMatch(/not rated yet/i)
+  })
+  it('the breakdown explains the weight', () => {
+    const r = recommend([item('Fav', { woody: 100 }, { rating: 10, lastWornAt: dayAgo(5) })], ctx())
+    const line = r.ranked[0].breakdown.find((l) => l.key === 'rating')!
+    expect(line.label).toMatch(/Rated 10\/10/)
+    expect(line.points).toBeGreaterThan(0)
+    // the lines still add up to the raw score
+    const sum = r.ranked[0].breakdown.reduce((s, l) => s + l.points, 0)
+    expect(Math.min(100, Math.max(0, Math.round(sum)))).toBe(r.ranked[0].score)
+  })
+  it('a low-rated bottle comes back after it has sat unworn for long enough', () => {
+    const rare = item('Rare', { woody: 100 }, { rating: 2, lastWornAt: dayAgo(5) })
+    const rested = item('Rested', { woody: 100 }, { rating: 2, lastWornAt: '2026-03-01 09:00' })
+    const normal = item('Normal', { woody: 100 }, { rating: 5, lastWornAt: dayAgo(5) })
+    const r = recommend([rare, rested, normal], ctx())
+    const score = (n: string) => r.ranked.find((x) => x.name === n)!.score
+    expect(score('Rare')).toBeLessThan(score('Normal') - 10)
+    expect(score('Rested')).toBeGreaterThanOrEqual(score('Normal'))
   })
 })
 

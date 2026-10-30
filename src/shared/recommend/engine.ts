@@ -1,3 +1,4 @@
+import { describeRatingWeight, effectiveRatingWeight } from '../rating'
 import { buildAffinity } from '../layering/affinity'
 import { analyzeLayer, cosine, VERDICT_WORTH_TESTING, type EngineOptions } from '../layering/engine'
 import { profileFor, targetWarmth, warmthIndex, type ActivityProfile } from './activities'
@@ -116,9 +117,6 @@ export function rotationPoints(days: number | null, wearsLast7Days = 0): number 
   return recent + boost - Math.max(wearsLast7Days - 1, 0) * 2
 }
 
-/** My rating only breaks ties: at most +-2 points. */
-export const ratingPoints = (rating: number | null | undefined): number => (rating == null ? 0 : clamp(((rating - 5.5) / 4.5) * 2, -2, 2))
-
 const NEUTRAL = 0.5
 
 export function scoreItem(item: RecItem, ctx: RecContext, tempC: number, humidity: number): Recommendation & { raw: number } {
@@ -138,9 +136,13 @@ export function scoreItem(item: RecItem, ctx: RecContext, tempC: number, humidit
 
   const days = daysSince(item.lastWornAt, ctx.now)
   const rot = rotationPoints(days, item.wearsLast7Days ?? 0)
-  const rate = ratingPoints(item.rating)
+  // My rating scales how well the fragrance fits the day (see shared/rating.ts); the rotation points are not scaled,
+  // and a low rating's penalty fades as a fragrance sits unworn, so nothing is forgotten.
+  const fitTotal = lines.reduce((sum, l) => sum + l.points, 0)
+  const weight = effectiveRatingWeight(item.rating, days)
+  const rate = fitTotal * (weight - 1)
   lines.push({ key: 'rotation', label: days === null ? 'Never worn yet' : `Worn ${days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`}`, fit: null, points: round1(rot) })
-  if (rate !== 0) lines.push({ key: 'rating', label: `Rated ${item.rating}/10`, fit: null, points: round1(rate) })
+  lines.push({ key: 'rating', label: describeRatingWeight(item.rating, weight), fit: null, points: round1(rate) })
 
   const raw = lines.reduce((s, l) => s + l.points, 0)
   const score = clamp(Math.round(raw), 0, 100)

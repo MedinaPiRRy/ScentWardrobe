@@ -1,3 +1,4 @@
+import type { RatingSuggestion } from './rating'
 import type { LayerItem, RatedCombo } from './layering/types'
 import type { RecItem } from './recommend/types'
 import type {
@@ -13,6 +14,7 @@ import type {
   PastBottle,
   ImportAnalysis,
   ImportProgress,
+  RatingSource,
   MemberImportProgress,
   MemberImportResult,
   MemberItem,
@@ -78,12 +80,18 @@ export interface Api {
   wardrobe: {
     move(req: MoveRequest): Promise<Result<FragranceSummary>>
     /** Persists a manual shelf order for one wardrobe. */
-    setRating(fragranceId: number, rating: number | null): Promise<Result<null>>
+    setRating(fragranceId: number, rating: number | null, source?: RatingSource): Promise<Result<null>>
     /** Edits the wardrobe-specific notes: why I dislike it (Garbage) or the Had details. */
     setDetails(fragranceId: number, details: { dislikeNote?: string | null; had?: HadDetails }): Promise<Result<null>>
     /** Previous bottles of fragrances I have bought again. */
     pastBottles(): Promise<PastBottle[]>
     reorder(wardrobe: WardrobeKind, orderedIds: number[]): Promise<Result<null>>
+  }
+  ratings: {
+    /** A few "is this rating still right?" suggestions for My Collection. */
+    suggestions(): Promise<RatingSuggestion[]>
+    /** Hides a suggestion for a while. */
+    dismiss(fragranceId: number): Promise<Result<null>>
   }
   journal: {
     add(fragranceId: number, text: string): Promise<Result<null>>

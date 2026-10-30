@@ -1,3 +1,4 @@
+import { listRatingHistory } from './ratings'
 import type {
   AccordStrength,
   Bottle,
@@ -252,10 +253,12 @@ export function getFragrance(db: Db, id: number): FragranceDetail | null {
     .all(id) as JournalEntry[]
 
   const pastBottles = listPastBottles(db, id)
+  const ratingHistory = listRatingHistory(db, id)
 
   return {
     ...summary,
     pastBottles,
+    ratingHistory,
     performance: performanceFor(db, id),
     perfumers: f.perfumers,
     gender: f.gender,

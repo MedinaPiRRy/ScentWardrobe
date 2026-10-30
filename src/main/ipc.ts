@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import type { Api, ChannelName } from '@shared/ipc'
-import type { WardrobeKind } from '@shared/types'
+import type { RatingSource, WardrobeKind } from '@shared/types'
 import type { Db } from './db'
 import { clearDataset, datasetCount, datasetEntry, detectPreset, previewImport, runImport, searchLocal } from './data/catalog'
 import { suggestMapping } from './data/mapping'
@@ -11,6 +11,7 @@ import { importFromUrl } from './fragrantica/fragranticaImport'
 import { fetchMemberWardrobe } from './fragrantica/memberFetch'
 import { isFragranticaUrl } from './fragrantica/fragranticaParser'
 import { isTrustedSender } from './security'
+import { dismissRatingSuggestion, listRatingSuggestions } from './db/ratings'
 import { buildPreview, parseListText, previewItems } from './fragrantica/memberParser'
 import { existingFragrances, runMemberImport } from './fragrantica/memberRun'
 import { importLocalImage, pickImageFile, readImageDataUrl, reportImageFailure, resolveRemoteImages } from './images'
@@ -93,7 +94,9 @@ export function registerIpc(db: Db, dbPath: string): void {
     'fragrances:setDefaultSprays': (e: Parameters<Api['fragrances']['setDefaultSprays']>[0]) => setDefaultSprays(db, e),
     'fragrances:setImpression': (id: number, t: string) => setImpression(db, id, t),
     'fragrances:ownedWithNote': (noteId: number, excl: number) => ownedWithNote(db, noteId, excl),
-    'wardrobe:setRating': (id: number, r: number | null) => setRating(db, id, r),
+    'wardrobe:setRating': (id: number, r: number | null, source?: RatingSource) => setRating(db, id, r, ['detail', 'shelf', 'wear'].includes(source ?? '') ? source : 'detail'),
+    'ratings:suggestions': () => listRatingSuggestions(db),
+    'ratings:dismiss': (id: number) => toResult(() => (dismissRatingSuggestion(db, id), null)),
     'journal:add': (id: number, t: string) => addJournal(db, id, t),
     'journal:update': (id: number, t: string) => updateJournal(db, id, t),
     'journal:delete': (id: number) => deleteJournal(db, id),

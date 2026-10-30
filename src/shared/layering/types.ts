@@ -18,6 +18,8 @@ export interface LayerItem {
   daynight?: { day: number; night: number } | null
   /** How hard it projects on a 1-4 scale (1 intimate .. 4 enormous): my own average when logged, else the community's. */
   projection?: number | null
+  /** My own rating, 1-10 (null or missing: not rated yet). Only used to order suggestions, never to score a pair. */
+  rating?: number | null
 }
 
 /** An item as placed in the mixer. */

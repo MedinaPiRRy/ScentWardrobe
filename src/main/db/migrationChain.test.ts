@@ -49,6 +49,10 @@ describe.each(migrations.map((m) => m.version))('a database created at schema ve
     expect(rows("SELECT value FROM settings WHERE key = 'ui.theme'")).toEqual([{ value: 'dark' }])
     expect((db.prepare('SELECT count(*) AS c FROM fragrance_notes').get() as { c: number }).c).toBe(3)
 
+    // Ratings that existed before rating history (schema 9) become its first entries.
+    const history = rows('SELECT fragrance_id AS id, rating, source FROM rating_history')
+    expect(history).toEqual(start < 9 ? [{ id: 1, rating: 8, source: 'earlier' }] : [])
+
     // Structural health.
     expect(db.pragma('foreign_key_check')).toEqual([])
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok')

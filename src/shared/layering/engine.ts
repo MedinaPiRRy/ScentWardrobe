@@ -1,3 +1,4 @@
+import { ratingWeight } from '../rating'
 import { affinityOf, buildAffinity, ruleReason } from './affinity'
 import { describeBlend } from './describe'
 import type { AffinityMatrix, LayerAnalysis, LayerItem, MixItem, PairAnalysis, RatedCombo, Reason, Verdict } from './types'
@@ -313,6 +314,8 @@ export interface PartnerSuggestion {
   verdict: Verdict
   /** One line on why. */
   headline: string
+  /** What the list is ordered by: the pair score times the weight of my rating of the partner. Display `score`, not this. */
+  rankScore: number
 }
 
 /** Ranks `candidates` as partners for `base` (one spray each), best first. */
@@ -323,7 +326,8 @@ export function suggestPartners(base: LayerItem, candidates: LayerItem[], option
       const r = analyzeLayer([{ item: base, sprays: 1 }, { item: c, sprays: 1 }], options)
       const best = r.reasons.find((x) => x.impact > 0) ?? r.reasons[0]
       const worst = r.reasons.find((x) => x.impact < 0)
-      return { item: c, score: r.score, verdict: r.verdict, headline: r.score >= VERDICT_WORTH_TESTING ? (best?.text ?? '') : (worst?.text ?? best?.text ?? '') }
+      // How well two fragrances go together is not changed by what I think of one of them; only the order of the list is.
+      return { item: c, score: r.score, verdict: r.verdict, headline: r.score >= VERDICT_WORTH_TESTING ? (best?.text ?? '') : (worst?.text ?? best?.text ?? ''), rankScore: r.score * ratingWeight(c.rating) }
     })
-    .sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name))
+    .sort((a, b) => b.rankScore - a.rankScore || b.score - a.score || a.item.name.localeCompare(b.item.name))
 }

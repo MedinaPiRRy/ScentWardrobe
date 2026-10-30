@@ -6,8 +6,6 @@ export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night'
 export interface RecItem extends LayerItem {
   /** Longevity on the community's 1-5 scale: mine once I have logged 2+ durations, else the community's. */
   longevity?: number | null
-  /** My rating, 1-10. Only a tiebreaker. */
-  rating?: number | null
   /** When I last wore it, 'YYYY-MM-DD ...' local time. */
   lastWornAt?: string | null
   /** Wears in the last 7 days. */

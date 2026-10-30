@@ -30,6 +30,7 @@ const api: Api = {
     pastBottles: c('wardrobe:pastBottles'),
     reorder: c('wardrobe:reorder')
   },
+  ratings: { suggestions: c('ratings:suggestions'), dismiss: c('ratings:dismiss') },
   journal: { add: c('journal:add'), update: c('journal:update'), delete: c('journal:delete') },
   bottles: { add: c('bottles:add'), update: c('bottles:update'), markEmpty: c('bottles:markEmpty') },
   catalog: { notes: c('catalog:notes'), accords: c('catalog:accords') },

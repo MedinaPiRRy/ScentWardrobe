@@ -1,3 +1,4 @@
+import { writeRating } from './ratings'
 import type {
   FollowUpInput,
   LowBottleWarning,
@@ -160,6 +161,7 @@ export function logWear(db: Db, input: WearInput, now = new Date()): Result<Wear
         db.prepare(`INSERT INTO wear_log (${COLUMNS}) VALUES (${COLUMNS.split(',').map(() => '?').join(',')})`).run(...insertParams(input, input.fragranceId != null && take ? (input.bottleId ?? null) : null, backfilled)).lastInsertRowid
       )
       warningsLater.push(...applyDeductions(db, id, input, take))
+      if (input.rating != null && input.fragranceId != null) writeRating(db, input.fragranceId, input.rating, 'wear')
       // Remember the bottle actually used when none was chosen.
       if (input.fragranceId != null && input.bottleId == null && take) {
         const used = db.prepare('SELECT bottle_id FROM wear_deductions WHERE wear_id = ? LIMIT 1').get(id) as { bottle_id: number } | undefined

@@ -332,6 +332,24 @@ ALTER TABLE bottles ADD COLUMN market_source TEXT;
 -- 1 for a fragrance I wore but do not own (a friend's, a shop tester). It has no wardrobe, and moving it into one clears the flag.
 ALTER TABLE fragrances ADD COLUMN is_foreign INTEGER NOT NULL DEFAULT 0 CHECK (is_foreign IN (0, 1));
 `
+  },
+  {
+    version: 9,
+    name: 'rating history',
+    sql: `
+-- Every change of my 1-10 rating, so I can see my taste change. rating NULL means I cleared it.
+CREATE TABLE rating_history (
+  id INTEGER PRIMARY KEY,
+  fragrance_id INTEGER NOT NULL REFERENCES fragrances(id) ON DELETE CASCADE,
+  rating INTEGER CHECK (rating IS NULL OR rating BETWEEN 1 AND 10),
+  rated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+  source TEXT NOT NULL DEFAULT 'detail' CHECK (source IN ('earlier', 'detail', 'shelf', 'wear'))
+);
+CREATE INDEX ix_rating_history_fragrance ON rating_history (fragrance_id, rated_at);
+-- Ratings that already exist become the first entry of their history.
+INSERT INTO rating_history (fragrance_id, rating, rated_at, source)
+  SELECT fragrance_id, rating, datetime('now', 'localtime'), 'earlier' FROM wardrobe_items WHERE rating IS NOT NULL;
+`
   }
 ]
 

@@ -4,11 +4,13 @@ import type {
   FragranceInput,
   FragranceSummary,
   Placement,
+  RatingSource,
   Result
 } from '@shared/types'
 import { accordColor } from '@shared/accordColors'
 import type { Db } from './index'
 import { isStoredImageName } from '../security'
+import { writeRating } from './ratings'
 import { applyMove, AppError, getSummary, toResult, type MoveOptions } from './repo'
 
 const clean = (v: string | null | undefined) => {
@@ -196,13 +198,9 @@ export function setImpression(db: Db, id: number, text: string): Result<null> {
   })
 }
 
-export function setRating(db: Db, id: number, rating: number | null): Result<null> {
+export function setRating(db: Db, id: number, rating: number | null, source: RatingSource = 'detail'): Result<null> {
   return toResult(() => {
-    if (rating != null && !(Number.isInteger(rating) && rating >= 1 && rating <= 10)) {
-      throw new AppError('INVALID', 'Rating must be a whole number from 1 to 10.')
-    }
-    const r = db.prepare('UPDATE wardrobe_items SET rating = ? WHERE fragrance_id = ?').run(rating, id)
-    if (r.changes === 0) throw new AppError('NOT_FOUND', 'Add the fragrance to a wardrobe before rating it.')
+    writeRating(db, id, rating, source)
     return null
   })
 }

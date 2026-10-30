@@ -427,6 +427,9 @@ export default function LayeringPage() {
                       {s.verdict}
                       {s.headline && ` · ${s.headline}`}
                     </div>
+                    <div className="text-[11px] text-cream/50" title="Fragrances you rate highly are listed a little higher, and low-rated ones a little lower. The score itself is about the pair only.">
+                      {s.item.rating != null ? `You rated it ${s.item.rating}/10` : 'Not rated yet'}
+                    </div>
                   </div>
                   <button
                     className={ghostBtn}
