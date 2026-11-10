@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FragranceInput, FragranceSummary, LocalHit, SavedCombo, WearEntry } from '@shared/types'
 import BottleSvg from './BottleSvg'
+import WearPicker from './WearPicker'
 import { ghostBtn, Modal, primaryBtn } from './Dialogs'
 import { WARDROBE_LABEL } from '../lib/shelf'
 import { PROJECTION_LABELS } from '../lib/performance'
@@ -123,27 +124,7 @@ export default function DayPanel({ date, wears, fragrances, combos, onClose, onC
       <div className="mt-5 border-t border-ink-600 pt-4">
         <div className="mb-1 text-sm text-cream/80">Log a wear on this day</div>
         <div className="flex gap-2">
-          <select value={pick} onChange={(e) => setPick(e.target.value)} aria-label="What did you wear?" className="min-w-0 flex-1 rounded border border-ink-600 bg-ink-900 px-2 py-2 text-sm text-cream">
-            <option value="">What did you wear?</option>
-            {groups.map((g) => (
-              <optgroup key={g.label} label={g.label}>
-                {g.items.map((f) => (
-                  <option key={f.id} value={`f${f.id}`}>
-                    {f.name} · {f.house}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-            {combos.length > 0 && (
-              <optgroup label="Blends">
-                {combos.map((c) => (
-                  <option key={c.id} value={`c${c.id}`}>
-                    {c.items.map((i) => i.name).join(' + ')}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
+          <WearPicker groups={groups} combos={combos} value={pick} onChange={setPick} />
           <button className={primaryBtn} disabled={!pick} onClick={start}>
             Log a wear
           </button>

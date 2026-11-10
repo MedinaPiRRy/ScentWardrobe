@@ -24,6 +24,8 @@ import {
   SEASONS,
   SORT_LABELS,
   sortFragrances,
+  DRAWER_ORDER_KEY,
+  parseOrder,
   HAD_REASON_LABEL,
   WARDROBE_LABEL,
   WARDROBES,
@@ -67,6 +69,11 @@ export default function WardrobesPage() {
   const navigate = useNavigate()
   const [importing, setImporting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  // The order I arranged the drawer in (fragrance ids), kept in settings; vials not in it follow, by name.
+  const [drawerOrder, setDrawerOrder] = useState<number[]>([])
+  useEffect(() => {
+    void window.api.settings.get(DRAWER_ORDER_KEY).then((v) => setDrawerOrder(parseOrder(v)))
+  }, [])
   const [drawerOpen, setDrawerOpen] = useState(() => {
     try {
       return localStorage.getItem('drawer.open') === '1'
@@ -180,10 +187,15 @@ export default function WardrobesPage() {
     const isVial = (b: { type: string }) => b.type === 'decant' || b.type === 'sample'
     const holders = all.filter((f) => f.wardrobes.some((w) => w === 'collection' || w === 'wishlist' || w === 'to_try') && f.bottles.some(isVial))
     const rank = (f: FragranceSummary) => (f.wardrobes.includes('collection') ? 0 : 1)
+    const place = (f: FragranceSummary) => {
+      const i = drawerOrder.indexOf(f.id)
+      return i < 0 ? Number.MAX_SAFE_INTEGER : i
+    }
     return sortFragrances(filterFragrances(holders, query, season, ratingFilter), 'name')
       .sort((a, b) => rank(a) - rank(b))
+      .sort((a, b) => place(a) - place(b))
       .map((f) => ({ ...f, bottles: f.bottles.filter(isVial) }))
-  }, [tab, all, query, season, ratingFilter])
+  }, [tab, all, query, season, ratingFilter, drawerOrder])
   const vialCaptions = useMemo(() => {
     const m = new Map<number, string>()
     for (const f of rack) if (!f.wardrobes.includes('collection') && f.wardrobe) m.set(f.id, `on my ${WARDROBE_LABEL[f.wardrobe]}`)
@@ -204,6 +216,12 @@ export default function WardrobesPage() {
     const r = await window.api.wardrobe.reorder(tab, order)
     if (!r.ok) say(r.message)
     void refresh()
+  }
+
+  const reorderDrawer = async (ids: number[]) => {
+    setDrawerOrder(ids)
+    const r = await window.api.settings.set(DRAWER_ORDER_KEY, JSON.stringify(ids))
+    if (!r.ok) say(r.message)
   }
 
   // ---- adding to and moving between wardrobes ---------------------------------------
@@ -420,7 +438,7 @@ export default function WardrobesPage() {
         <div className="-mt-1 pb-1">
           <Drawer open={drawerOpen || (query.trim() !== '' && rack.length > 0)} onToggle={toggleDrawer} count={rack.length}>
             {rack.length > 0 ? (
-              <Shelf {...shelfProps} theme={TRAY_THEME} items={rack} slot={104} scale={0.85} draggable={false} captions={vialCaptions.size > 0 ? vialCaptions : undefined} onReorder={() => undefined} />
+              <Shelf {...shelfProps} theme={TRAY_THEME} items={rack} slot={104} scale={0.85} draggable={!filtering} captions={vialCaptions.size > 0 ? vialCaptions : undefined} onReorder={(ids) => void reorderDrawer(ids)} />
             ) : (
               <p className="px-6 py-10 text-center text-sm text-cream/55">
                 {query.trim() || season !== 'all' ? 'No vials match your search.' : 'Nothing in the drawer yet. Every sample and decant you add is kept here, including those of fragrances you only want.'}

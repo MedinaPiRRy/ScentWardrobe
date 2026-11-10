@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FragranceSummary } from '@shared/types'
-import { arrayMove, bottleHeightPx, filterFragrances, fillLevel, isRackItem, shelfBottle, sortFragrances } from './shelf'
+import { arrayMove, bottleHeightPx, filterFragrances, fillLevel, isRackItem, parseOrder, shelfBottle, sortFragrances } from './shelf'
 
 const make = (o: Partial<FragranceSummary>): FragranceSummary => ({
   id: 1, name: 'A', house: 'H', year: null, concentration: null, imagePath: null, wardrobe: 'collection',
@@ -87,5 +87,15 @@ describe('rating filter and sort', () => {
   })
   it('sorts the best rated first with unrated last', () => {
     expect(names(sortFragrances(items, 'rating'))).toEqual(['Nine', 'Seven', 'Five', 'Two', 'None'])
+  })
+})
+
+describe('parseOrder (saved drawer order)', () => {
+  it('reads a list of ids', () => expect(parseOrder('[3,1,2]')).toEqual([3, 1, 2]))
+  it('tolerates a missing, damaged or odd value', () => {
+    expect(parseOrder(null)).toEqual([])
+    expect(parseOrder('not json')).toEqual([])
+    expect(parseOrder('{"a":1}')).toEqual([])
+    expect(parseOrder('[1,"x",2.5,null,2,1]')).toEqual([1, 2])
   })
 })

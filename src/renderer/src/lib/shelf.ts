@@ -145,3 +145,16 @@ export function viewIn(f: FragranceSummary, w: WardrobeKind): FragranceSummary {
 
 /** "My Collection + Wishlist" */
 export const wardrobeList = (list: WardrobeKind[]): string => list.map((w) => WARDROBE_LABEL[w]).join(' + ')
+
+/** Settings key holding the order I arranged the drawer's vials in (a JSON list of fragrance ids). */
+export const DRAWER_ORDER_KEY = 'drawer.order'
+
+/** The saved drawer order, tolerating a missing, damaged or hand-edited value. */
+export function parseOrder(raw: string | null): number[] {
+  try {
+    const v = JSON.parse(raw ?? '[]') as unknown
+    return Array.isArray(v) ? [...new Set(v.filter((x): x is number => Number.isInteger(x)))] : []
+  } catch {
+    return []
+  }
+}
