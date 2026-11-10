@@ -125,10 +125,15 @@ and when you opened it. Use **Edit** to change the level, and **Mark empty** whe
   fragrances that are still on your Wishlist or To Try**: add the vial to the wishlist fragrance (its detail view shows
   "Samples and decants I have"). Those fragrances stay on their shelf with a small "have a vial" tag and show in the
   drawer too.
+- **Rearrange the drawer by dragging**, just like the bottles on the shelf. The order is remembered (it is part of your
+  settings, so backups keep it). Vials you add later go after the ones you have arranged. While a search or filter is
+  active dragging is switched off, so the order is never changed by accident.
 
 ## Logging wears
 
-Open a fragrance → **Log a wear**, or right-click a bottle → **Log a wear**, or use a day in the Calendar.
+Open a fragrance → **Log a wear**, or right-click a bottle → **Log a wear**, or use a day in the Calendar. In the Calendar, **What did you wear?** is a search box: click it and type part of a
+name or house (several words narrow it further), then use the arrow keys and Enter or click a result. Decants and
+samples are tagged, so they are easy to tell from full bottles. Escape closes the list first.
 
 Fill in the date and time, how many sprays, the activity, the weather, how strongly it projected, how long it lasted,
 compliments and notes. Today's wears take the sprays out of the bottle you pick (the one you used last time is chosen for you,
