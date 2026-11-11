@@ -2,7 +2,11 @@
 // Drives the PACKAGED app with a throw-away profile and sample data only. Build first (npm run dist:dir).
 // node scripts/e2e/a11y.mjs [outDir]
 import { mkdirSync } from 'node:fs'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { defaultExe, launch, sleep } from './harness.mjs'
+import { writeDump } from './synthetic.mjs'
 
 const EXE = process.env.SCENT_EXE ?? defaultExe()
 const OUT = process.argv[2] ?? 'e2e-output/a11y'
@@ -63,6 +67,11 @@ try {
   const list = await j('window.api.fragrances.list()')
   const sauvage = list.find((f) => f.name === 'Sauvage') ?? list[0]
   await j(`window.api.fragrances.rate ? window.api.fragrances.rate(${sauvage.id}, 8, null) : null`).catch(() => null)
+  // a small invented dataset, so Discovery is audited with suggestions, not only its empty state
+  const dumpFile = join(mkdtempSync(join(tmpdir(), 'scent-a11y-')), 'perfumes.jsonl')
+  writeDump(dumpFile, 600)
+  const imported = await j(`window.api.importer.run(${JSON.stringify(dumpFile)}, null, {}, false)`)
+  if (!imported.ok) throw new Error('synthetic import failed: ' + imported.message)
   const sizes = [[1280, 720], [1100, 640]]
   for (const theme of ['dark', 'light']) {
     await j(`window.api.settings.set("ui.theme", ${JSON.stringify(theme)})`)
@@ -72,6 +81,19 @@ try {
       const tag = `${theme} ${w}x${h}`
       const snap = async (name, label) => { await sleep(700); await app.shot(`${OUT}/${theme}-${w}-${name}.png`); report(`${tag} ${label}`, await j(AUDIT)) }
 
+      await app.go('#/discover')
+      await app.ev(`(async () => { for (let i = 0; i < 100; i++) { const st = await window.api.discover.status(); if (st.complete) break; await new Promise((r) => setTimeout(r, 100)) } })()`)
+      await sleep(1500)
+      await snap('discover', 'Discovery: For you')
+      await app.ev(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Edit my taste')?.click()`); await sleep(300)
+      await snap('discover-taste', 'Discovery: taste panel open')
+      await app.ev(`[...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim() === 'More like these')?.click()`); await sleep(500)
+      await app.ev(`document.querySelector('#sl-sweet') && (() => { const i = document.querySelector('#sl-sweet'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, '-0.8'); i.dispatchEvent(new Event('input', { bubbles: true })) })()`); await sleep(300)
+      await snap('discover-similar', 'Discovery: More like these')
+      await app.ev(`[...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim() === 'Brief')?.click()`); await sleep(500)
+      await app.ev(`(() => { const i = document.querySelector('#b-season'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(i, 'summer'); i.dispatchEvent(new Event('change', { bubbles: true })) })()`); await sleep(900)
+      await app.ev(`[...document.querySelectorAll('article button')].find((b) => b.textContent.includes('Show what it meets'))?.click()`); await sleep(300)
+      await snap('discover-brief', 'Discovery: Brief with the checklist open')
       await app.go('#/'); await snap('shelf', 'shelf')
       // rating strip on hover
       await app.ev(`(() => { const c = document.querySelector('main [class*=cursor-pointer]'); c?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); c?.focus?.() })()`)

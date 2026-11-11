@@ -71,6 +71,17 @@ Page loading, scrolling (votes load lazily), the human-check handling and the 3-
 `fragranticaImport.ts` and `memberFetch.ts`. The window the pages load in (`scrapeWindow.ts`) is sandboxed, has no
 permissions, navigates only to https addresses and is kept invisible by being transparent and off-screen.
 
+## Discovery
+
+Pure scoring is in `src/shared/discover` (framework-free, unit-tested in `discover.test.ts`); database access and the background index are in `src/main/db/discover.ts`; the window is `pages/DiscoverPage.tsx` with `components/discover/*`.
+
+- **Data.** Migration 11 adds `catalog_extra` (what the importer keeps from a full dump record: note weights, rating and value votes, collection counts, community gender votes, "reminds me of" votes, recent popularity, capture time; see `shared/discover/extra.ts`), `discover_features` (the derived, query-friendly copy), `discover_ignored` and `discover_briefs`. Re-importing a file adds nothing new but **enriches** rows that were imported without extras (`ImportResult.enriched`). Extras are kept out of the saved fragrance JSON.
+- **Index.** `buildDiscoverIndex` copies the dataset into `discover_features` in 1,500-row chunks with the progress marker in the same transaction (`settings` keys `discover.index.*`), yielding to the event loop between chunks, so cancelling or quitting at any point loses nothing and the next call resumes. An import, re-import or `clearDataset` invalidates it (the build also checks a generation counter so it cannot finish stale), and `INDEX_VERSION` forces a rebuild after a format change. `loadDiscoverIndex` pages the table into a struct-of-arrays `FeatureIndex` (typed arrays, no per-row objects) the first time per session, which pauses the main process for about a second on 140,000 rows.
+- **Scoring.** `rank.ts` is the shared core: cosine similarity on accords (65%) and note weights (35%) against a compiled profile, minus what I avoid or dislike, blended with community quality (rating shrunk toward 3.9) and confidence (voters). `explainRow` writes only reasons it computed. `similar.ts` turns seeds and sliders into a target and an adjust function; `brief.ts` evaluates a brief per row (`met` / `partial` / `unmet` / `unknown`) with allocation-free numbers in the ranking loop and strings only for the page shown. Temperature, humidity and activity reuse `shared/recommend/activities`. Ownership is matched by house, name and concentration through `FeatureIndex.rowsForKey`, not per-row string work.
+- **Budgets.** On 140,000 synthetic rows: For you about 60 ms in the engine (about 130 ms round trip), a full brief about 70 ms (about 170 ms), the index build about 4 s, and the first query of a session about 1 s while the index loads. `discover.test.ts` checks the engine part (below 300 ms) and `scripts/e2e/discover.mjs` phase 3 checks the real round trip.
+- **Fixtures.** `shared/discover/fixture.ts` and `scripts/e2e/synthetic.mjs` generate invented rows ("Synthetic 000123", plain accord and note names). No Fragrantica data is used in tests or screenshots, and `data/` stays out of the repository.
+- **Not built yet:** wardrobe gaps, layering partners, dupes and alternatives, budget hints, the vibe/persona vocabulary and gift lists. The extras they need (reminds-me-of votes, value votes) are already stored.
+
 ## End-to-end checks
 
 `scripts/e2e/` drives the packaged app through Chromium's remote debugging port with a throw-away profile
@@ -80,6 +91,10 @@ permissions, navigates only to https addresses and is kept invisible by being tr
 npm run dist:dir
 node scripts/e2e/smoke.mjs      # every page renders, five wardrobe tabs, theme switch, no console errors
 node scripts/e2e/flows.mjs      # dialogs and focus, moves between wardrobes, prices, backup, relaunch persistence
+node scripts/e2e/round3.mjs     # ratings, weather, Browse, several wardrobes (each phase in a fresh profile)
+node scripts/e2e/drawer-picker.mjs   # dragging vials, the searchable wear picker
+node scripts/e2e/discover.mjs   # Discovery: no dataset, a small synthetic dataset, 140,000 synthetic rows (timings)
+node scripts/e2e/a11y.mjs       # contrast (WCAG AA) and layout of the new screens, both themes, both minimum sizes
 node scripts/e2e/screenshots.mjs docs/screenshots   # README screenshots from the sample data only
 ```
 

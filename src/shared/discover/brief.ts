@@ -1,6 +1,6 @@
 import { PROFILES, NEUTRAL_PROFILE, accordWarmClass, profileFor, targetWarmth } from '../recommend/activities'
 import type { FeatureIndex } from './index'
-import { DEFAULT_HIDE, libraryKeys, qualityOf, wardrobesOfRow, type Hide, type Suggestion } from './rank'
+import { DEFAULT_HIDE, ignoredRows, libraryRows, qualityOf, type Hide, type Suggestion } from './rank'
 import type { LibraryItem } from './taste'
 import { SEASONS, inFamily, longevityWords, norm, plural, sillageWords, type Season } from './vocab'
 
@@ -382,12 +382,16 @@ export interface BriefResult {
 export function rankBrief(index: FeatureIndex, brief: Brief, opts: BriefOptions): BriefResult {
   const t0 = Date.now()
   const ctx = compileBrief(index, brief, opts.datasetDate ?? null)
-  const keys = libraryKeys(opts.library)
+  const mineRows = libraryRows(index, opts.library)
+  const ignoredSet = ignoredRows(index, opts.ignored)
   const hide = opts.hide ?? DEFAULT_HIDE
   const hidden = { owned: 0, garbage: 0, wishlist: 0, toTry: 0, had: 0, ignored: 0 }
   let excluded = 0
   const examples: string[] = []
-  const scored: { i: number; v: number; s: number }[] = []
+  const rowOf = new Int32Array(index.n)
+  const valueOf = new Float64Array(index.n)
+  const satOf = new Float64Array(index.n)
+  let m = 0
   let active = 0
   for (let i = 0; i < index.n; i++) {
     const ev = evaluateRow(index, ctx, i)
@@ -398,22 +402,28 @@ export function rankBrief(index: FeatureIndex, brief: Brief, opts: BriefOptions)
     }
     active = Math.max(active, ev.criteria)
     const q = qualityOf(index, i)
-    scored.push({ i, s: ev.satisfaction, v: 0.8 * ev.satisfaction + 0.2 * (q ?? 0.5) })
+    rowOf[m] = i
+    satOf[m] = ev.satisfaction
+    valueOf[m] = 0.8 * ev.satisfaction + 0.2 * (q ?? 0.5)
+    m++
   }
-  scored.sort((a, b) => b.v - a.v || a.i - b.i)
+  const order = Uint32Array.from({ length: m }, (_, k) => k).sort((a, b) => valueOf[b] - valueOf[a] || rowOf[a] - rowOf[b])
   const out: BriefSuggestion[] = []
   let total = 0
   const offset = opts.offset ?? 0
   const limit = opts.limit ?? 40
-  for (const { i, v, s } of scored) {
-    const mine = wardrobesOfRow(index, keys, i)
+  for (const k of order) {
+    const i = rowOf[k]
+    const v = valueOf[k]
+    const s = satOf[k]
+    const mine = mineRows.get(i) ?? []
     const gone = (k: keyof typeof hidden) => {
       hidden[k]++
       return true
     }
     if (mine.includes('garbage') && hide.garbage && gone('garbage')) continue
     if (mine.includes('collection') && hide.owned && gone('owned')) continue
-    if (hide.ignored && opts.ignored?.has(`${index.houseKey[i]}|${index.nameKey[i]}|${index.concKey[i]}`) && gone('ignored')) continue
+    if (hide.ignored && ignoredSet.has(i) && gone('ignored')) continue
     if (!mine.includes('collection')) {
       if (mine.includes('wishlist') && hide.wishlist && gone('wishlist')) continue
       if (mine.includes('to_try') && hide.toTry && gone('toTry')) continue

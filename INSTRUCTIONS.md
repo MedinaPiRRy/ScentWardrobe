@@ -71,6 +71,34 @@ a confirmation.
 
 Every result says where it comes from: **In my library** (with its wardrobe), **From the imported dataset**, or **Live from Fragrantica (not saved)**. Nothing is saved while you browse, and closing the view leaves nothing behind: no fragrance, picture or setting. **Add to a wardrobe…** opens the normal Add fragrance form with everything filled in, so the usual rules apply (for example the wishlist note), and the fragrance is only created when you confirm. A live page is loaded one at a time and only the page you pasted; it takes a few seconds.
 
+## Discovery: ideas for what to try next
+
+**Discovery** (left bar) suggests fragrances you do not have yet. Everything is worked out on this computer from your own library and, if you imported one, the dataset; nothing about your library is sent anywhere. Every suggestion shows **why** it was made, and when the app has no data for something it says so instead of guessing.
+
+**Without a dataset** Discovery ranks what is already on your Wishlist and To Try list against your taste. **With a dataset** it searches the whole catalog and can also explain suggestions with community votes (seasons, day or night, longevity, projection, ratings, how well known). After an import it prepares the dataset once in the background (a progress bar, **Pause** and **Continue**; stopping loses nothing). If your dataset was imported by an older version it lacks ratings, note weights and "smells like" votes: import the original dump again and the app fills them in without adding duplicates.
+
+**My taste.** A short description of what your library points toward, with the accords and notes behind it. It is built from what you own (rated and often-worn fragrances count more), a little from your Wishlist, To Try and Had, and negatively from Garbage Perfumes and anything you rated 1 to 3. **Edit my taste** lets you push an accord or note up (**More**), stop your library from pushing it (**Ignore**), or **Avoid** it (suggestions with it are marked down and say so). Your edits are saved in your settings.
+
+**For you.** Suggestions with a score, the reasons, the accords, and what you can do: **+ Wishlist** / **+ To Try** (the usual Add form, so the usual rules apply, such as the wishlist note), **More like this**, **Open on Fragrantica** (in your browser) and **Not interested** (remembered; **Bring it back** is in the list at the bottom). Filters (season, number of voters, a soft gender lean) stay while the app is open. By default what you own, what is in Garbage Perfumes and what you said no to are hidden, and a count of what was hidden is shown; anything already on your Wishlist, To Try or Had shows with an "Already in ..." badge. Change that under **Hide or show what I already have**.
+
+**More like these.** Pick up to six fragrances (yours or from the dataset). The app averages them into a target and shows it in words. The sliders say how the result should differ: sweeter or less sweet, fresher or warmer, quieter or louder, shorter or longer lasting, a different drydown, more unusual (less common, odder accords). It lists what each slider changed.
+
+**Brief.** Describe what you need; everything you fill in is combined.
+
+| Part | What it uses |
+| --- | --- |
+| Season, time of day | the dataset's season and day/night votes (unknown when there are too few votes) |
+| Temperature, humidity, occasion | the same rules the Recommendations page uses (an estimate from each fragrance's accords). **Use today's weather** fills them from your saved city |
+| Lasts, projection | the community's longevity and sillage averages |
+| Crowd-pleaser, stands out, popularity | labelled **estimates**: ratings, how well known a fragrance is and a moderate sillage; "less common" uses the dataset popularity score. There is no data on compliments for fragrances you do not own, and nothing says "niche" |
+| Wanted accords and notes | present and strong enough |
+| Dealbreakers | "no prominent vetiver" or "no strong sweet accord" remove a fragrance; "not syrupy sweet" removes sweet-dominated ones. The page says how many were removed and why |
+| Gender lean | a soft preference from community votes, off by default |
+
+Each result can be expanded to show what it **meets**, what it **partly meets** and what it does not, with the numbers behind each line. **Save** a brief under a name and load it later.
+
+What Discovery cannot know, and says so: the price of fragrances you do not own, whether something is discontinued, and anything about vibes or memories. The dataset's popularity numbers are from the date it was captured (shown when the file carried it).
+
 ## The five wardrobes
 
 Tabs at the top of the Wardrobes page. Drag bottles to reorder them (dragging is off while you search, filter or sort).

@@ -157,6 +157,33 @@ export function wardrobesOfRow(index: FeatureIndex, keys: LibraryKeys, i: number
   return [...new Set([...(keys.map.get(base + index.concKey[i]) ?? []), ...(keys.map.get(`${base}*`) ?? [])])]
 }
 
+/** Which rows of the index are things I have, by wardrobe: a handful of lookups instead of a string compare per row. */
+export function libraryRows(index: FeatureIndex, library: LibraryItem[]): Map<number, WardrobeName[]> {
+  const out = new Map<number, WardrobeName[]>()
+  for (const it of library) {
+    if (it.wardrobes.length === 0) continue
+    const conc = norm(it.concentration ?? '')
+    for (const i of index.rowsForKey(norm(it.house), norm(it.name))) {
+      if (conc && index.concKey[i] !== conc) continue
+      out.set(i, [...new Set([...(out.get(i) ?? []), ...it.wardrobes])])
+    }
+  }
+  return out
+}
+
+/** Rows marked "not interested" (keys are house|name|concentration, normalised). */
+export function ignoredRows(index: FeatureIndex, keys: Set<string> | undefined): Set<number> {
+  const out = new Set<number>()
+  if (!keys) return out
+  for (const k of keys) {
+    const [h, n, c] = k.split('|')
+    for (const i of index.rowsForKey(h, n)) if (!c || index.concKey[i] === c) out.add(i)
+  }
+  return out
+}
+
+const NONE: WardrobeName[] = []
+
 // ---- reasons ------------------------------------------------------------------------------------------
 
 const join = (xs: string[]): string => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
@@ -249,7 +276,8 @@ export interface ForYouResult {
 export function rankForYou(index: FeatureIndex, taste: Pick<TasteProfile, 'accords' | 'notes'>, library: LibraryItem[], opts: ForYouOptions = {}): ForYouResult {
   const t0 = Date.now()
   const compiled = compile(index, taste)
-  const keys = libraryKeys(library)
+  const mineRows = libraryRows(index, library)
+  const ignoredSet = ignoredRows(index, opts.ignored)
   const hide = opts.hide ?? DEFAULT_HIDE
   const minFit = opts.minFit ?? 0.12
   const minVotes = opts.minVotes ?? 0
@@ -296,14 +324,14 @@ export function rankForYou(index: FeatureIndex, taste: Pick<TasteProfile, 'accor
         continue
       }
     }
-    const mine = wardrobesOfRow(index, keys, i)
+    const mine = mineRows.get(i) ?? NONE
     const drop = (reason: keyof typeof hidden): boolean => {
       hidden[reason]++
       return true
     }
     if (mine.includes('garbage') && hide.garbage && drop('garbage')) continue
     if (mine.includes('collection') && hide.owned && drop('owned')) continue
-    if (hide.ignored && opts.ignored?.has(`${index.houseKey[i]}|${index.nameKey[i]}|${index.concKey[i]}`) && drop('ignored')) continue
+    if (hide.ignored && ignoredSet.has(i) && drop('ignored')) continue
     if (!mine.includes('collection')) {
       if (mine.includes('wishlist') && hide.wishlist && drop('wishlist')) continue
       if (mine.includes('to_try') && hide.toTry && drop('toTry')) continue

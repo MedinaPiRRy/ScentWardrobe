@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import BrowsePage from './pages/BrowsePage'
 import CalendarPage from './pages/CalendarPage'
+import DiscoverPage from './pages/DiscoverPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import FollowUpPrompt from './components/FollowUpPrompt'
 import UpdateDialog from './components/UpdateDialog'
@@ -16,6 +17,7 @@ import WardrobesPage from './pages/WardrobesPage'
 const NAV = [
   { to: '/', label: 'Wardrobes', icon: '▥' },
   { to: '/browse', label: 'Browse', icon: '⌕' },
+  { to: '/discover', label: 'Discovery', icon: '✦' },
   { to: '/layering', label: 'Layering Lab', icon: '⚗' },
   { to: '/recommendations', label: 'Recommendations', icon: '☼' },
   { to: '/calendar', label: 'Calendar', icon: '▦' },
@@ -91,6 +93,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<WardrobesPage />} />
             <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/layering" element={<LayeringPage />} />
             <Route path="/recommendations" element={<RecommendationsPage />} />
             <Route path="/calendar" element={<CalendarPage />} />

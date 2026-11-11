@@ -209,6 +209,23 @@ export class FeatureIndex {
     return out
   }
 
+  private keyMap: Map<string, number[]> | null = null
+
+  /** Rows for a house and name (normalised keys), built once on first use. Several rows share a key when a fragrance has several concentrations. */
+  rowsForKey(houseKey: string, nameKey: string): number[] {
+    if (!this.keyMap) {
+      const m = new Map<string, number[]>()
+      for (let i = 0; i < this.n; i++) {
+        const k = `${this.houseKey[i]}|${this.nameKey[i]}`
+        const list = m.get(k)
+        if (list) list.push(i)
+        else m.set(k, [i])
+      }
+      this.keyMap = m
+    }
+    return this.keyMap.get(`${houseKey}|${nameKey}`) ?? []
+  }
+
   /** The row index of a catalog id (linear; only used for a handful of seeds). */
   indexOfCatalog(catalogId: number): number {
     return this.catalogId.indexOf(catalogId)
