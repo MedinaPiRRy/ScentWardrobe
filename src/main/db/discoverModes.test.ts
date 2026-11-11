@@ -71,6 +71,8 @@ describe('layering partners', () => {
     expect(byName['Warm Owned'].labIds).toEqual([base, owned])
     expect(byName['Warm Owned'].layer!.score).toBeGreaterThan(0)
     expect(byName['Warm Wish'].labIds).toBeNull()
+    // what I own comes before what I only want
+    expect(r.cards.findIndex((c) => c.name === 'Warm Owned')).toBeLessThan(r.cards.findIndex((c) => c.name === 'Warm Wish'))
     expect(byName['Warm Wish'].fragranceId).toBe(wish)
     expect(r.cards.map((c) => c.name)).not.toContain('Base')
     expect(byName['Warm Owned'].layer!.reasons.length).toBeGreaterThan(0)
@@ -127,6 +129,17 @@ describe('dupes and alternatives', () => {
     const plain = r.cards.find((c) => c.name === 'Unvoted Lookalike')!
     expect(plain.score).toBeLessThan(clone.score)
     expect(plain.reasons.map((x) => x.text).join(' ')).toMatch(/no "smells like" votes link these two/)
+  })
+
+  it('leaves out other versions of the same fragrance (same house, same name plus a suffix)', async () => {
+    const db = openDatabase(':memory:')
+    insertCatalog(db, [...rows, { name: 'Original Absolu', house: 'Big House', accords: [['citrus', 100], ['woody', 80], ['amber', 50]] }, { name: 'Original', house: 'Other Brand', accords: [['citrus', 100], ['woody', 80], ['amber', 50]] }])
+    await buildDiscoverIndex(db)
+    const r = await discoverDupes(db, { seed: { catalogId: 1 }, filters: {} })
+    const names = r.cards.map((c) => `${c.name} / ${c.house}`)
+    expect(names).not.toContain('Original Absolu / Big House')
+    expect(names).toContain('Original / Other Brand') // the same name from another house is a real candidate
+    expect(r.notes.join(' ')).toMatch(/Another version of Original by Big House is left out/)
   })
 
   it('says when the dataset has no votes and what to do about it', async () => {

@@ -14,7 +14,7 @@ const SHOTS = process.env.SHOTS_DIR
 if (only.length === 0) {
   const { spawnSync } = await import('node:child_process')
   let failed = 0
-  for (const n of [1, 2, 3, 4]) {
+  for (const n of [1, 2, 3, 4, 5]) {
     const r = spawnSync(process.execPath, [new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'), String(n)], { stdio: 'inherit', env: process.env })
     if (r.status !== 0) failed++
   }
@@ -145,6 +145,17 @@ try {
     check('Try before you buy lists wishlist fragrances without a vial, or says why not', /Try before you buy/.test(bud))
     await shot('discover-budget')
 
+    await clickText('[role=tab]', 'Gifts')
+    await sleep(500)
+    check('Gifts without a dataset says what is missing and still shows the person form', /not here yet/.test(await app.text()) && (await app.ev(`!!document.querySelector('#p-exp')`)) === true)
+    check('there are eight modes in the switcher', (await app.ev(`document.querySelectorAll('[role=tab]').length`)) === 8)
+    await app.ev(`document.querySelector('[role=tab][data-mode="gifts"]').focus()`)
+    await app.key('ArrowRight')
+    await sleep(400)
+    check('the arrow keys move between the modes', (await app.ev(`document.querySelector('[role=tab][aria-selected=true]').getAttribute('data-mode')`)) === 'for_you')
+    await app.key('End')
+    await sleep(300)
+    check('End goes to the last mode', (await app.ev(`document.querySelector('[role=tab][aria-selected=true]').getAttribute('data-mode')`)) === 'gifts')
     check('no console errors', app.logs.errors.length === 0, app.logs.errors.slice(0, 3).join(' | '))
     check('no unhandled exceptions', app.logs.exceptions.length === 0, app.logs.exceptions.slice(0, 3).join(' | '))
   }
@@ -364,6 +375,71 @@ try {
     await setValue('#bud-amount', '90')
     await sleep(800)
     check('the budget page still answers with a dataset present', /Try before you buy/.test(await app.text()))
+    check('no console errors', app.logs.errors.length === 0, app.logs.errors.slice(0, 3).join(' | '))
+    check('no unhandled exceptions', app.logs.exceptions.length === 0, app.logs.exceptions.slice(0, 3).join(' | '))
+  }
+  if (phase === 5) {
+    console.log('--- Phase 5: feelings, people and gift lists with a synthetic dataset')
+    const dir = mkdtempSync(join(tmpdir(), 'scent-synth-'))
+    const file = join(dir, 'perfumes.jsonl')
+    writeDump(file, 1500)
+    const an = await j(`window.api.importer.analyze(${JSON.stringify(file)})`)
+    await j(`window.api.importer.run(${JSON.stringify(file)}, null, ${JSON.stringify(an.ok ? an.data.suggested : {})}, false)`)
+    await j('window.api.discover.startIndex()')
+    for (let i = 0; i < 200; i++) {
+      if ((await j('window.api.discover.status()')).complete) break
+      await sleep(250)
+    }
+
+    // a feeling
+    await app.go('#/discover')
+    await clickText('[role=tab]', 'Brief')
+    await sleep(400)
+    await setValue('textarea[placeholder^="e.g. fresh soap"]', 'fresh soap on a summer morning, not too sweet, blorf')
+    await sleep(500)
+    const vibe = await app.text()
+    check('the words are shown as chips with the words they came from', /soapy accord/.test(vibe) && /from .fresh soap./.test(vibe) && /for summer/.test(vibe) && /no sweet/.test(vibe))
+    check('words that are not in the vocabulary are reported, not guessed', /Not understood, so left out: blorf/.test(vibe))
+    await app.ev(`document.querySelector('button[aria-label="Remove musky accord"]')?.click()`)
+    await sleep(300)
+    check('a chip can be removed before anything is searched', !(await app.text()).includes('musky accord'))
+    await clickText('button', 'Use these in the brief')
+    await sleep(900)
+    check('the chips fill in the brief', (await app.ev(`document.querySelector('#b-season').value`)) === 'summer' && /Added to the brief/.test(await app.text()))
+    check('and the brief then returns results', await waitFor(`document.querySelectorAll('article[aria-label]').length > 0`, 8000))
+    await shot('discover-vibe')
+
+    // a person
+    await clickText('[role=tab]', 'Gifts')
+    await waitFor(`document.querySelector('#p-exp')`)
+    await setValue('#p-exp', 'new')
+    await setValue('#p-life', 'office')
+    await setValue('#p-climate', 'hot')
+    await sleep(500)
+    const persona = await app.text()
+    check('the person becomes starting points with their reasons', /crowd-pleaser \(estimate\)/.test(persona) && /for summer/.test(persona) && /new to fragrance/.test(persona) && /works in an office/.test(persona))
+    check('and ideas appear without using my own taste', await waitFor(`document.querySelectorAll('article[aria-label]').length > 0`, 8000))
+    await shot('discover-gifts')
+    // add to a list: first without a name
+    await app.ev(`[...document.querySelectorAll('article button')].find((b) => b.textContent.trim() === 'Add to gift list').click()`)
+    await sleep(300)
+    check('adding without naming the list asks for a name', /Name the list first/.test(await app.text()))
+    await setValue('#gift-list-name', 'Mum, birthday')
+    const firstGift = await app.ev(`[...document.querySelectorAll('article[aria-label]')][0].getAttribute('aria-label').split(' by ')[0]`)
+    await app.ev(`[...[...document.querySelectorAll('article[aria-label]')][0].querySelectorAll('button')].find((b) => b.textContent.trim() === 'Add to gift list').click()`)
+    await sleep(700)
+    const lists = await j('window.api.discover.gifts()')
+    check('the fragrance is saved on the named list with the description it came from', lists.length === 1 && lists[0].name === 'Mum, birthday' && lists[0].items.length === 1 && lists[0].persona.experience === 'new', JSON.stringify(lists[0]?.items))
+    check('the list is shown with a way to save it as CSV', /Mum, birthday/.test(await app.text()) && (await app.ev(`!![...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save as CSV')`)) === true)
+    check('and the ideas can be saved as CSV too', (await app.ev(`!![...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save these as CSV')`)) === true)
+    await app.ev(`[...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label')?.startsWith('Remove ') && b.getAttribute('aria-label').includes('from Mum, birthday')).click()`)
+    await sleep(600)
+    check('a fragrance can be removed from the list', (await j('window.api.discover.gifts()'))[0].items.length === 0 && ((await app.text()).includes('Empty.')))
+    await clickText('button', 'Delete list')
+    await clickText('button', 'Really delete it?')
+    await sleep(500)
+    check('the list can be deleted after a second click', (await j('window.api.discover.gifts()')).length === 0)
+    // the persona survives a restart on the list; the page itself starts empty
     check('no console errors', app.logs.errors.length === 0, app.logs.errors.slice(0, 3).join(' | '))
     check('no unhandled exceptions', app.logs.exceptions.length === 0, app.logs.exceptions.slice(0, 3).join(' | '))
   }

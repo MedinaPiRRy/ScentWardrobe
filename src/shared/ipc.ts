@@ -1,5 +1,5 @@
 import type { Brief } from './discover/brief'
-import type { BriefRequest, BriefResults, BudgetResults, DiscoverFilters, DupesResults, GapsResult, LayeringResults, SeedRef, DiscoverResults, DiscoverStatus, IgnoredItem, SavedBrief, SimilarRequest, SimilarResults, TasteResult } from './discover/dto'
+import type { BriefRequest, BriefResults, BudgetResults, DiscoverFilters, DupesResults, GapsResult, GiftList, LayeringResults, SeedRef, DiscoverResults, DiscoverStatus, IgnoredItem, SavedBrief, SimilarRequest, SimilarResults, TasteResult } from './discover/dto'
 import type { Override } from './discover/taste'
 import type { RatingSuggestion } from './rating'
 import type { LayerItem, RatedCombo } from './layering/types'
@@ -74,6 +74,14 @@ export interface Api {
     layering(req: { seed: SeedRef; limit?: number }): Promise<LayeringResults>
     dupes(req: { seed: SeedRef; filters: DiscoverFilters; cheaperOnly?: boolean }): Promise<DupesResults>
     budget(req: { budget: number; sizeMl: number }): Promise<BudgetResults>
+    gifts(): Promise<GiftList[]>
+    /** Adds a fragrance to a gift list, creating the list (and remembering the description it came from) when it is new. */
+    giftAdd(req: { name: string; persona?: unknown; item?: { key: string; name: string; house: string; note?: string | null } }): Promise<Result<GiftList[]>>
+    giftRemove(listId: number, key: string): Promise<Result<GiftList[]>>
+    giftDelete(listId: number): Promise<Result<GiftList[]>>
+    /** Asks where to save, then writes these results as a CSV. null when cancelled. */
+    exportResults(title: string, rows: { name: string; house: string; year?: number | null; concentration?: string | null; score?: number | null; reasons?: string[]; inWardrobes?: string[]; sourceUrl?: string | null }[]): Promise<Result<{ path: string; rows: number } | null>>
+    exportGift(listId: number): Promise<Result<{ path: string; rows: number } | null>>
     saveBrief(name: string, brief: Brief): Promise<Result<SavedBrief[]>>
     deleteBrief(id: number): Promise<Result<SavedBrief[]>>
   }

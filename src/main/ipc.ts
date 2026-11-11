@@ -44,6 +44,8 @@ import { completeFollowUp, deleteWear, dismissFollowUp, listWears, listWearsRang
 import { AppError, dbInfo, fail, getFragrance, listFragrances, listPastBottles, toResult } from './db/repo'
 import { moveToWardrobe, removeFromWardrobe, reorderWardrobe, setWardrobeDetails } from './db/memberships'
 import { cancelDiscoverIndex, deleteBrief, discoverBrief, discoverForYou, discoverSimilar, discoverStatus, getTaste, ignoreFragrance, listBriefs, listIgnored, saveBrief, setOverride, startDiscoverIndex, unignoreFragrance } from './db/discover'
+import { addToGiftList, deleteGiftList, listGiftLists, removeFromGiftList } from './db/discoverGifts'
+import { exportGiftAs, exportResultsAs } from './discoverExport'
 import { discoverBudget, discoverCoverage, discoverDupes, discoverLayering } from './db/discoverModes'
 import { checkForUpdate, installUpdate, openReleasePage } from './updater'
 import { clearSampleData, seedSampleData } from './db/seed'
@@ -90,6 +92,12 @@ export function registerIpc(db: Db, dbPath: string): void {
     'discover:coverage': () => discoverCoverage(db),
     'discover:layering': (r: Parameters<Api['discover']['layering']>[0]) => discoverLayering(db, r),
     'discover:dupes': (r: Parameters<Api['discover']['dupes']>[0]) => discoverDupes(db, r),
+    'discover:gifts': () => listGiftLists(db),
+    'discover:giftAdd': (r: Parameters<Api['discover']['giftAdd']>[0]) => addToGiftList(db, r),
+    'discover:giftRemove': (id: number, key: string) => removeFromGiftList(db, id, key),
+    'discover:giftDelete': (id: number) => deleteGiftList(db, id),
+    'discover:exportResults': (t: string, rows: Parameters<Api['discover']['exportResults']>[1]) => exportResultsAs(t, rows),
+    'discover:exportGift': (id: number) => exportGiftAs(db, id),
     'discover:budget': (r: Parameters<Api['discover']['budget']>[0]) => discoverBudget(db, r),
     'discover:saveBrief': (n: string, b: Parameters<Api['discover']['saveBrief']>[1]) => saveBrief(db, n, b),
     'discover:deleteBrief': (id: number) => deleteBrief(db, id),

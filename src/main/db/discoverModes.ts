@@ -7,6 +7,7 @@ import { analyzeCoverage, type GapItem } from '@shared/discover/gaps'
 import { compile, fitOf, ignoredRows, libraryRows, rankForYou, type Suggestion } from '@shared/discover/rank'
 import { seedProfile } from '@shared/discover/similar'
 import type { LibraryItem } from '@shared/discover/taste'
+import { norm } from '@shared/discover/vocab'
 import type { BudgetResults, DiscoverCard, DiscoverFilters, DupesResults, GapsResult, LayeringResults, SeedRef } from '@shared/discover/dto'
 import type { Season } from '@shared/discover/vocab'
 import type { FeatureIndex } from '@shared/discover'
@@ -118,7 +119,8 @@ export async function discoverLayering(db: Db, req: { seed: SeedRef; limit?: num
     const it = byId.get(p.item.id)
     const info = reasonsOf(base, p.item)
     scored.push({
-      rank: p.rankScore,
+      // what I can mix today comes first, in the Lab's own order (my ratings steer it), then the ideas I do not own
+      rank: 1000 + p.rankScore,
       card: {
         key: `l:${p.item.id}`, source: 'library', catalogId: null, fragranceId: p.item.id, name: p.item.name, house: p.item.house ?? '', year: null, concentration: it?.concentration ?? null, sourceUrl: null, imageUrl: null,
         topAccords: [...p.item.accords].sort((a, b) => b.strength - a.strength).slice(0, 4), score: Math.round(p.score), reasons: [], inWardrobes: it?.wardrobes ?? ['collection'],
@@ -277,7 +279,15 @@ export async function discoverDupes(db: Db, req: { seed: SeedRef; filters: Disco
   for (const r of votes.keys()) keys.add(r)
   const suggestions: { s: Suggestion; ev: number | null; votes: string[]; cheaper: boolean | null; money: string[] }[] = []
   const byRow = new Map(similar.results.map((s) => [s.row, s]))
+  const sourceHouse = norm(house)
+  const sourceName = norm(name)
+  const sameFragrance = (r: number): boolean => index.houseKey[r] === sourceHouse && (index.nameKey[r].startsWith(sourceName) || sourceName.startsWith(index.nameKey[r]))
+  let sameFamily = 0
   for (const r of keys) {
+    if (sameFragrance(r)) {
+      sameFamily++
+      continue
+    }
     const v = votes.get(r)
     const ev = v ? evidenceStrength(v.up, v.down) : null
     const fit = fits.get(r) ?? 0
@@ -305,6 +315,7 @@ export async function discoverDupes(db: Db, req: { seed: SeedRef; filters: Disco
   })
 
   const notesOut: string[] = []
+  if (sameFamily > 0) notesOut.push(`${sameFamily === 1 ? 'Another version' : `${sameFamily} other versions`} of ${name} by ${house} ${sameFamily === 1 ? 'is' : 'are'} left out: they are the same fragrance, not alternatives.`)
   if (had) notesOut.push(`${name} is no longer in your collection: these are candidates to replace it. The dataset does not say whether it is discontinued.`)
   else notesOut.push('The dataset does not say whether a fragrance is discontinued or what it costs.')
   if (!hasVotes) notesOut.push(extrasMissing ? 'Your dataset has no "smells like" votes (it was imported before the app kept them). Import the original dump again to add them; until then results rest on accords and notes only.' : 'The dataset has no "smells like" votes for this fragrance.')

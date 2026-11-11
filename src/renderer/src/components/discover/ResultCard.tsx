@@ -31,10 +31,11 @@ interface Props {
   onOpenMine: (id: number) => void
   /** Open these (both in My Collection) together in the Layering Lab. */
   onOpenLab?: (ids: number[]) => void
+  onGift?: (card: DiscoverCard) => void
 }
 
 /** One suggestion: why it was suggested, what I can do with it. */
-export default function ResultCard({ card, onAdd, onIgnore, onMoreLike, onOpenMine, onOpenLab }: Props) {
+export default function ResultCard({ card, onAdd, onIgnore, onMoreLike, onOpenMine, onOpenLab, onGift }: Props) {
   const [open, setOpen] = useState(false)
   const mine = card.inWardrobes.map((w) => WARDROBE_LABEL[w])
   const fragrantica = card.sourceUrl && FRAGRANTICA.test(card.sourceUrl) ? card.sourceUrl : null
@@ -139,6 +140,11 @@ export default function ResultCard({ card, onAdd, onIgnore, onMoreLike, onOpenMi
       )}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-1">
+        {onGift && (
+          <button className={ghostBtn} onClick={() => onGift(card)}>
+            Add to gift list
+          </button>
+        )}
         {card.labIds && onOpenLab && (
           <button className={ghostBtn} onClick={() => onOpenLab(card.labIds!)}>
             Open in the Layering Lab

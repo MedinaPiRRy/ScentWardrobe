@@ -12,13 +12,14 @@ import BriefPanel from '../components/discover/BriefPanel'
 import SimilarPanel, { type SeedChoice } from '../components/discover/SimilarPanel'
 import CardGrid from '../components/discover/CardGrid'
 import GapsPanel from '../components/discover/GapsPanel'
+import GiftsPanel from '../components/discover/GiftsPanel'
 import { BudgetPanel, DupesPanel, LayeringPanel } from '../components/discover/PartnerPanels'
 import TastePanel from '../components/discover/TastePanel'
 import FragranceForm from '../components/FragranceForm'
 import ImportWizard from '../components/ImportWizard'
 import { ghostBtn, primaryBtn } from '../components/Dialogs'
 
-type Mode = 'for_you' | 'similar' | 'brief' | 'gaps' | 'layering' | 'dupes' | 'budget'
+type Mode = 'for_you' | 'similar' | 'brief' | 'gaps' | 'layering' | 'dupes' | 'budget' | 'gifts'
 const MODES: { key: Mode; label: string; hint: string }[] = [
   { key: 'for_you', label: 'For you', hint: 'Suggestions from your own taste' },
   { key: 'similar', label: 'More like these', hint: 'Start from fragrances you pick' },
@@ -26,7 +27,8 @@ const MODES: { key: Mode; label: string; hint: string }[] = [
   { key: 'gaps', label: 'Gaps', hint: 'Where your collection is thin' },
   { key: 'layering', label: 'Layering', hint: 'Partners to layer with' },
   { key: 'dupes', label: 'Dupes', hint: 'Alternatives and replacements' },
-  { key: 'budget', label: 'Budget', hint: 'Budget and trying first' }
+  { key: 'budget', label: 'Budget', hint: 'Budget and trying first' },
+  { key: 'gifts', label: 'Gifts', hint: 'Ideas for a person, not a scent' }
 ]
 const SEARCH_MODES: Mode[] = ['for_you', 'similar', 'brief']
 
@@ -254,11 +256,26 @@ export default function DiscoverPage() {
 
       <TastePanel data={taste} onSet={setOverride} />
 
-      <div role="tablist" aria-label="Discovery modes" className="flex flex-wrap gap-2">
+      <div
+        role="tablist"
+        aria-label="Discovery modes"
+        className="flex flex-wrap gap-2"
+        onKeyDown={(e) => {
+          // Arrow keys, Home and End move between the modes, as in any tab list.
+          const i = MODES.findIndex((m) => m.key === mode)
+          const to = e.key === 'ArrowRight' ? (i + 1) % MODES.length : e.key === 'ArrowLeft' ? (i + MODES.length - 1) % MODES.length : e.key === 'Home' ? 0 : e.key === 'End' ? MODES.length - 1 : -1
+          if (to < 0) return
+          e.preventDefault()
+          setMode(MODES[to].key)
+          window.setTimeout(() => document.querySelector<HTMLElement>(`[role=tab][data-mode="${MODES[to].key}"]`)?.focus(), 0)
+        }}
+      >
         {MODES.map((m) => (
           <button
             key={m.key}
             role="tab"
+            data-mode={m.key}
+            tabIndex={mode === m.key ? 0 : -1}
             aria-selected={mode === m.key}
             title={m.hint}
             onClick={() => setMode(m.key)}
@@ -276,6 +293,7 @@ export default function DiscoverPage() {
       {mode === 'layering' && <LayeringPanel actions={actions} seed={layerSeed} onSeed={setLayerSeed} rev={rev} />}
       {mode === 'dupes' && <DupesPanel actions={actions} seed={dupeSeed} onSeed={setDupeSeed} rev={rev} />}
       {mode === 'budget' && <BudgetPanel actions={actions} rev={rev} />}
+      {mode === 'gifts' && <GiftsPanel actions={actions} datasetCount={status?.datasetCount ?? 0} rev={rev} />}
 
       {SEARCH_MODES.includes(mode) && (
       <section className={`${card} flex flex-wrap items-end gap-4`} aria-label="Filters">
@@ -349,7 +367,7 @@ export default function DiscoverPage() {
         </div>
         {error && <p className="rounded border border-red-400/50 bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}
         {results?.message && cards.length === 0 && <p className={`${card} text-sm text-cream/85`}>{results.message}</p>}
-        <CardGrid cards={cards} actions={actions} />
+        <CardGrid cards={cards} actions={actions} exportTitle={MODES.find((m) => m.key === mode)?.label ?? 'Discovery'} />
         {cards.length > 0 && cards.length < total && (
           <div className="mt-4 text-center">
             <button className={ghostBtn} onClick={() => setLimit((n) => n + PAGE)}>

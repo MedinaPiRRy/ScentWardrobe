@@ -4,6 +4,7 @@ import type { SavedBrief } from '@shared/discover/dto'
 import { ghostBtn, primaryBtn } from '../Dialogs'
 import { cToF, fToC, type TempUnit } from '@shared/weather'
 import ChipInput from './ChipInput'
+import VibeBox from './VibeBox'
 
 const ACCORD_SUGGESTIONS = ['citrus', 'woody', 'fresh', 'amber', 'vanilla', 'aromatic', 'fresh spicy', 'warm spicy', 'musky', 'floral', 'white floral', 'powdery', 'leather', 'tobacco', 'aquatic', 'green', 'fruity', 'oud', 'rose', 'earthy', 'smoky', 'balsamic', 'herbal', 'lavender', 'iris', 'sweet', 'coconut', 'caramel', 'coffee', 'mineral']
 const NOTE_SUGGESTIONS = ['bergamot', 'lemon', 'vetiver', 'cedar', 'sandalwood', 'patchouli', 'vanilla', 'tonka bean', 'amber', 'musk', 'jasmine', 'rose', 'lavender', 'pepper', 'cardamom', 'cinnamon', 'leather', 'tobacco', 'oakmoss', 'ambroxan', 'iris', 'orange', 'grapefruit', 'mint', 'sage', 'incense', 'oud', 'coffee']
@@ -55,6 +56,7 @@ export default function BriefPanel({ brief, onBrief, saved, onSaved, unit }: { b
 
   return (
     <section className="space-y-3 rounded-xl border border-ink-600 bg-ink-800 p-4" aria-label="Brief">
+      <VibeBox brief={brief} onBrief={onBrief} />
       <p className="text-sm text-cream/80">Describe what you need. Everything you fill in is combined; leave the rest empty. Results show what each fragrance meets and what it only partly meets.</p>
 
       <Group title="Context" hint="The dataset has season and day/night votes; temperature and humidity are matched with a rule of thumb from each fragrance's accords (an estimate).">
