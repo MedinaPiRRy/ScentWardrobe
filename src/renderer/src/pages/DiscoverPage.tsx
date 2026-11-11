@@ -11,6 +11,7 @@ import type { TempUnit } from '@shared/weather'
 import BriefPanel from '../components/discover/BriefPanel'
 import SimilarPanel, { type SeedChoice } from '../components/discover/SimilarPanel'
 import CardGrid from '../components/discover/CardGrid'
+import DetailDialog from '../components/discover/DetailDialog'
 import GapsPanel from '../components/discover/GapsPanel'
 import GiftsPanel from '../components/discover/GiftsPanel'
 import { BudgetPanel, DupesPanel, LayeringPanel } from '../components/discover/PartnerPanels'
@@ -73,6 +74,7 @@ export default function DiscoverPage() {
   const [results, setResults] = useState<AnyResults | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [detail, setDetail] = useState<DiscoverCard | null>(null)
   const [adding, setAdding] = useState<{ input: FragranceInput; to: 'wishlist' | 'to_try' } | null>(null)
   const [importing, setImporting] = useState(false)
   const [toast, setToast] = useState<{ text: string; id?: number } | null>(null)
@@ -188,6 +190,7 @@ export default function DiscoverPage() {
     onAdd: (c: DiscoverCard, to: 'wishlist' | 'to_try') => void startAdd(c, to),
     onIgnore: (c: DiscoverCard) => void ignore(c),
     onMoreLike: moreLike,
+    onDetails: (c: DiscoverCard) => setDetail(c),
     onOpenMine: (id: number) => navigate(`/?open=${id}`),
     onOpenLab: (ids: number[]) => navigate(`/layering?mix=${ids.join(',')}`)
   }
@@ -396,6 +399,7 @@ export default function DiscoverPage() {
         </details>
       )}
 
+      {detail && <DetailDialog card={detail} actions={actions} onClose={() => setDetail(null)} />}
       {adding && <FragranceForm mode="add" prefill={adding.input} defaultWardrobe={adding.to} onClose={() => setAdding(null)} onSubmit={save} />}
       {importing && (
         <ImportWizard

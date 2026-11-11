@@ -12,6 +12,8 @@ export interface CardActions {
   onOpenLab?: (ids: number[]) => void
   /** Add to the current gift list (Gifts mode only). */
   onGift?: (card: DiscoverCard) => void
+  /** Open the full card of a suggestion. */
+  onDetails?: (card: DiscoverCard) => void
 }
 
 /** The cards of a result list, two to a row on a wide window, with a button that saves them as CSV. */

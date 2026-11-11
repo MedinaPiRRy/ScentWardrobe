@@ -109,6 +109,8 @@ Each result can be expanded to show what it **meets**, what it **partly meets** 
 
 **Gifts.** Describe a person instead of a scent: age band, lifestyle, experience, climate, occasions, and an optional gender lean that only nudges. The answers become starting points (each shows the reason, and some are typical choices rather than facts, such as the accords for an age band), which you can change before the ideas are searched. This does not use your own taste. Add ideas to a **named gift list** (for example "Mum, birthday"); lists remember the description they came from and **Save as CSV** writes the list for you to share. Gift ideas need the imported dataset.
 
+**Seeing more about a suggestion.** Click a card (or its name) in any mode to open its full card: why it was suggested (every reason, plus the votes, pair score or checklist of that mode), its notes, accords and community charts, and its picture when the app can fetch it. The same buttons are there (add to Wishlist or To Try, more like this, Open on Fragrantica, not interested). Escape closes it.
+
 **Saving results.** Every list of ideas has **Save these as CSV**, which asks where to save and writes the names, houses, scores and reasons (not your private notes) in a file Excel opens.
 
 What Discovery cannot know, and says so: the price of fragrances you do not own, whether something is discontinued, and anything about vibes or memories beyond the words in its list. The dataset's popularity numbers are from the date it was captured (shown when the file carried it).

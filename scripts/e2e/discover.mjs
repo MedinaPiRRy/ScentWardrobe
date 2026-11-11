@@ -70,6 +70,12 @@ try {
     check('nothing from my collection is suggested', !names.some((n) => /Sauvage by|Bleu de Chanel by/.test(n)))
     check('no "not interested" or add-to-wishlist buttons on my own list items', (await app.ev(`!document.body.innerText.includes('Not interested')`)) === true)
 
+    await app.ev(`document.querySelector('article[aria-label] h3 button').click()`)
+    await waitFor(`document.querySelector('[role=dialog]')`)
+    check('a card from my own list opens its full card too, with notes and accords', await waitFor(`/Main accords/.test(document.querySelector('[role=dialog]').innerText)`, 6000) && /Open in my library/.test(await app.ev(`document.querySelector('[role=dialog]').innerText`)))
+    await app.key('Escape')
+    await waitFor(`!document.querySelector('[role=dialog]')`)
+
     // editing my taste
     await clickText('button', 'Edit my taste')
     await sleep(300)
@@ -186,6 +192,25 @@ try {
     check('a card shows score, reasons and actions', /score/i.test(why) && /shares|strong in/.test(why) && /\+ Wishlist/.test(why) && /Not interested/.test(why) && /Open on Fragrantica/.test(why), why.replace(/\n/g, ' | ').slice(0, 220))
     check('worn-in-season and rating evidence appear', /worn by people in|rated \d\.\d\d\/5/.test(await app.text()))
     check('Open on Fragrantica is a link that opens in the browser', (await app.ev(`!!document.querySelector('article a[target=_blank][href^="https://www.fragrantica.com/"]')`)) === true)
+
+    // the full card
+    await app.ev(`document.querySelector('article[aria-label] h3 button').click()`)
+    check('clicking the name opens the full card', await waitFor(`document.querySelector('[role=dialog]')`))
+    check('it loads notes, accords and community charts', await waitFor(`/Main accords/.test(document.querySelector('[role=dialog]').innerText) && /Community/.test(document.querySelector('[role=dialog]').innerText)`, 6000))
+    const full = await app.ev(`document.querySelector('[role=dialog]').innerText`)
+    check('the card says why it was suggested', /Why it was suggested/.test(full) && /Score \d+ out of 100/.test(full) && /shares|strong in/.test(full))
+    check('and offers the same actions', /\+ Wishlist/.test(full) && /More like this/.test(full) && /Open on Fragrantica/.test(full))
+    await shot('discover-detail')
+    await app.key('Escape')
+    await waitFor(`!document.querySelector('[role=dialog]')`)
+    check('Escape closes it', (await app.ev(`!document.querySelector('[role=dialog]')`)) === true)
+    // a click on the card itself (not a button) opens it too, but a click on a button inside does its own thing
+    await app.ev(`document.querySelector('article[aria-label] ul').click()`)
+    check('clicking the card itself also opens it', await waitFor(`document.querySelector('[role=dialog]')`))
+    await app.ev(`[...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent.trim() === '+ Wishlist').click()`)
+    check('+ Wishlist in the full card opens the usual add form', await waitFor(`document.querySelector('[role=dialog] input')`) && !/Why it was suggested/.test(await app.ev(`document.querySelector('[role=dialog]').innerText`)))
+    await app.key('Escape')
+    await waitFor(`!document.querySelector('[role=dialog]')`)
 
     // add to wishlist goes through the normal form and its rules
     const first = names[0]

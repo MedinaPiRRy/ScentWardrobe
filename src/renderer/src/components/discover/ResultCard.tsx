@@ -32,19 +32,35 @@ interface Props {
   /** Open these (both in My Collection) together in the Layering Lab. */
   onOpenLab?: (ids: number[]) => void
   onGift?: (card: DiscoverCard) => void
+  onDetails?: (card: DiscoverCard) => void
 }
 
 /** One suggestion: why it was suggested, what I can do with it. */
-export default function ResultCard({ card, onAdd, onIgnore, onMoreLike, onOpenMine, onOpenLab, onGift }: Props) {
+export default function ResultCard({ card, onAdd, onIgnore, onMoreLike, onOpenMine, onOpenLab, onGift, onDetails }: Props) {
   const [open, setOpen] = useState(false)
   const mine = card.inWardrobes.map((w) => WARDROBE_LABEL[w])
   const fragrantica = card.sourceUrl && FRAGRANTICA.test(card.sourceUrl) ? card.sourceUrl : null
   return (
-    <article className="flex flex-col gap-3 rounded-xl border border-ink-600 bg-ink-800 p-4" aria-label={`${card.name} by ${card.house}`}>
+    <article
+      className={`flex flex-col gap-3 rounded-xl border border-ink-600 bg-ink-800 p-4 ${onDetails ? 'cursor-pointer hover:border-brass-500/60' : ''}`}
+      aria-label={`${card.name} by ${card.house}`}
+      // A click on the card itself (not on a button or link inside it) opens the full card.
+      onClick={(e) => {
+        if (onDetails && !(e.target as HTMLElement).closest('button, a, input, select, summary')) onDetails(card)
+      }}
+    >
       <div className="flex items-start gap-3">
         <Score score={card.score} />
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-lg leading-tight text-cream">{card.name}</h3>
+          <h3 className="font-display text-lg leading-tight text-cream">
+            {onDetails ? (
+              <button type="button" className="text-left hover:text-brass-400 focus-visible:underline" onClick={() => onDetails(card)} aria-label={`See details of ${card.name} by ${card.house}`}>
+                {card.name}
+              </button>
+            ) : (
+              card.name
+            )}
+          </h3>
           <div className="text-sm text-brass-400">
             {card.house}
             <span className="text-cream/70">{[card.year, card.concentration].filter(Boolean).length ? ` · ${[card.year, card.concentration].filter(Boolean).join(' · ')}` : ''}</span>
