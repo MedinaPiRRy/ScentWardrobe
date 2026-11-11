@@ -481,6 +481,40 @@ CREATE TABLE discover_briefs (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `
+  },
+  {
+    version: 12,
+    name: 'discovery: smells-like votes and gift lists',
+    sql: `
+-- Who says it reminds them of what, from the dataset's "smells like" votes: the row of catalog_fragrances whose page has the vote
+-- (source_id) reminds people of the fragrance with Fragrantica id target_fid. Derived (rebuilt with the Discovery index).
+CREATE TABLE discover_remind (
+  target_fid INTEGER NOT NULL,
+  source_id INTEGER NOT NULL REFERENCES catalog_fragrances(id) ON DELETE CASCADE,
+  up INTEGER NOT NULL,
+  down INTEGER NOT NULL,
+  PRIMARY KEY (target_fid, source_id)
+);
+CREATE INDEX ix_discover_remind_source ON discover_remind (source_id);
+
+-- Saved gift lists: a named shortlist for a person, with the description it was made from.
+CREATE TABLE discover_gift_lists (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  persona TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE discover_gift_items (
+  list_id INTEGER NOT NULL REFERENCES discover_gift_lists(id) ON DELETE CASCADE,
+  key TEXT NOT NULL,
+  name TEXT NOT NULL,
+  house TEXT NOT NULL,
+  note TEXT,
+  position INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (list_id, key)
+);
+`
   }
 ]
 

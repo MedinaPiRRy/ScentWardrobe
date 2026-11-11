@@ -44,6 +44,8 @@ export function writeDump(path, n) {
       daypart: { day: v(), night: v() },
       people: 200 + Math.floor(r() * 9000),
       popularity: { magnitude: pop, recent_magnitude: Math.floor(pop * r() * 0.4) },
+      similar: i > 5 && r() < 0.2 ? { reminds_me_of: [{ id: 500001 + (i % 97), up_votes: 200 + Math.floor(r() * 3000), down_votes: Math.floor(r() * 40) }], also_liked: [] } : { reminds_me_of: [], also_liked: [] },
+      price_value: { average: 2 + r() * 3, histogram: [{ bucket: 3, count: 40 }, { bucket: 4, count: 60 + Math.floor(r() * 300) }] },
       meta: { scraped_at: 1779692833 }
     }
     buf.push(JSON.stringify(rec))

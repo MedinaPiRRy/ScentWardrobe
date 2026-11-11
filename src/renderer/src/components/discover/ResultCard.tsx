@@ -29,10 +29,12 @@ interface Props {
   onIgnore: (card: DiscoverCard) => void
   onMoreLike: (card: DiscoverCard) => void
   onOpenMine: (id: number) => void
+  /** Open these (both in My Collection) together in the Layering Lab. */
+  onOpenLab?: (ids: number[]) => void
 }
 
 /** One suggestion: why it was suggested, what I can do with it. */
-export default function ResultCard({ card, onAdd, onIgnore, onMoreLike, onOpenMine }: Props) {
+export default function ResultCard({ card, onAdd, onIgnore, onMoreLike, onOpenMine, onOpenLab }: Props) {
   const [open, setOpen] = useState(false)
   const mine = card.inWardrobes.map((w) => WARDROBE_LABEL[w])
   const fragrantica = card.sourceUrl && FRAGRANTICA.test(card.sourceUrl) ? card.sourceUrl : null
@@ -67,6 +69,37 @@ export default function ResultCard({ card, onAdd, onIgnore, onMoreLike, onOpenMi
           ))}
         </ul>
       )}
+
+      {card.layer && (
+        <div className="rounded-lg border border-ink-600 bg-ink-900 p-3 text-sm">
+          <div className="font-medium text-cream">
+            {card.layer.verdict} <span className="text-cream/70">· pair score {card.layer.score}/100</span>
+          </div>
+          {card.layer.reasons.length > 0 && (
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-cream/85">
+              {card.layer.reasons.map((r, i) => (
+                <li key={i}>{r}</li>
+              ))}
+            </ul>
+          )}
+          {card.labIds == null && <p className="mt-1 text-xs text-cream/70">Not in My Collection yet, so it cannot be mixed in the Layering Lab. A sample or decant added to My Collection can.</p>}
+        </div>
+      )}
+      {card.evidence && card.evidence.length > 0 && (
+        <ul className="list-disc space-y-0.5 pl-5 text-sm text-cream/90" aria-label="Votes behind this link">
+          {card.evidence.map((e, i) => (
+            <li key={i}>{e}</li>
+          ))}
+        </ul>
+      )}
+      {card.money && card.money.length > 0 && (
+        <ul className="list-disc space-y-0.5 pl-5 text-sm text-cream/80" aria-label="Value">
+          {card.money.map((e, i) => (
+            <li key={i}>{e}</li>
+          ))}
+        </ul>
+      )}
+      {card.trial && <p className="rounded-lg border border-brass-500/40 bg-brass-500/10 p-3 text-sm text-cream/90">{card.trial}</p>}
 
       {card.topAccords.length > 0 && (
         <div className="flex flex-wrap gap-1.5" aria-label="Main accords">
@@ -106,6 +139,11 @@ export default function ResultCard({ card, onAdd, onIgnore, onMoreLike, onOpenMi
       )}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-1">
+        {card.labIds && onOpenLab && (
+          <button className={ghostBtn} onClick={() => onOpenLab(card.labIds!)}>
+            Open in the Layering Lab
+          </button>
+        )}
         {card.fragranceId != null && (
           <button className={ghostBtn} onClick={() => onOpenMine(card.fragranceId!)}>
             Open in my library

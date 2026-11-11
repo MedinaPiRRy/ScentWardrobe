@@ -1,5 +1,5 @@
 import type { Brief } from './discover/brief'
-import type { BriefRequest, BriefResults, DiscoverFilters, DiscoverResults, DiscoverStatus, IgnoredItem, SavedBrief, SimilarRequest, SimilarResults, TasteResult } from './discover/dto'
+import type { BriefRequest, BriefResults, BudgetResults, DiscoverFilters, DupesResults, GapsResult, LayeringResults, SeedRef, DiscoverResults, DiscoverStatus, IgnoredItem, SavedBrief, SimilarRequest, SimilarResults, TasteResult } from './discover/dto'
 import type { Override } from './discover/taste'
 import type { RatingSuggestion } from './rating'
 import type { LayerItem, RatedCombo } from './layering/types'
@@ -69,6 +69,11 @@ export interface Api {
     ignore(f: { name: string; house: string; concentration?: string | null }): Promise<Result<IgnoredItem[]>>
     unignore(key: string): Promise<Result<IgnoredItem[]>>
     briefs(): Promise<SavedBrief[]>
+    /** Where My Collection is thin (seasons, time of day, occasions, families, performance), from what I own and wear. */
+    coverage(): Promise<GapsResult>
+    layering(req: { seed: SeedRef; limit?: number }): Promise<LayeringResults>
+    dupes(req: { seed: SeedRef; filters: DiscoverFilters; cheaperOnly?: boolean }): Promise<DupesResults>
+    budget(req: { budget: number; sizeMl: number }): Promise<BudgetResults>
     saveBrief(name: string, brief: Brief): Promise<Result<SavedBrief[]>>
     deleteBrief(id: number): Promise<Result<SavedBrief[]>>
   }

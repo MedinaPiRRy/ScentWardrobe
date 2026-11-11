@@ -44,6 +44,7 @@ import { completeFollowUp, deleteWear, dismissFollowUp, listWears, listWearsRang
 import { AppError, dbInfo, fail, getFragrance, listFragrances, listPastBottles, toResult } from './db/repo'
 import { moveToWardrobe, removeFromWardrobe, reorderWardrobe, setWardrobeDetails } from './db/memberships'
 import { cancelDiscoverIndex, deleteBrief, discoverBrief, discoverForYou, discoverSimilar, discoverStatus, getTaste, ignoreFragrance, listBriefs, listIgnored, saveBrief, setOverride, startDiscoverIndex, unignoreFragrance } from './db/discover'
+import { discoverBudget, discoverCoverage, discoverDupes, discoverLayering } from './db/discoverModes'
 import { checkForUpdate, installUpdate, openReleasePage } from './updater'
 import { clearSampleData, seedSampleData } from './db/seed'
 
@@ -86,6 +87,10 @@ export function registerIpc(db: Db, dbPath: string): void {
     'discover:ignore': (f: Parameters<Api['discover']['ignore']>[0]) => ignoreFragrance(db, f),
     'discover:unignore': (k: string) => unignoreFragrance(db, k),
     'discover:briefs': () => listBriefs(db),
+    'discover:coverage': () => discoverCoverage(db),
+    'discover:layering': (r: Parameters<Api['discover']['layering']>[0]) => discoverLayering(db, r),
+    'discover:dupes': (r: Parameters<Api['discover']['dupes']>[0]) => discoverDupes(db, r),
+    'discover:budget': (r: Parameters<Api['discover']['budget']>[0]) => discoverBudget(db, r),
     'discover:saveBrief': (n: string, b: Parameters<Api['discover']['saveBrief']>[1]) => saveBrief(db, n, b),
     'discover:deleteBrief': (id: number) => deleteBrief(db, id),
     'update:check': () => checkForUpdate(),

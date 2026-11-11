@@ -85,7 +85,7 @@ const api: Api = {
   discover: {
     status: c('discover:status'), startIndex: c('discover:startIndex'), cancelIndex: c('discover:cancelIndex'), taste: c('discover:taste'), setOverride: c('discover:setOverride'),
     forYou: c('discover:forYou'), similar: c('discover:similar'), brief: c('discover:brief'), ignored: c('discover:ignored'), ignore: c('discover:ignore'), unignore: c('discover:unignore'),
-    briefs: c('discover:briefs'), saveBrief: c('discover:saveBrief'), deleteBrief: c('discover:deleteBrief')
+    briefs: c('discover:briefs'), coverage: c('discover:coverage'), layering: c('discover:layering'), dupes: c('discover:dupes'), budget: c('discover:budget'), saveBrief: c('discover:saveBrief'), deleteBrief: c('discover:deleteBrief')
   },
   update: { check: c('update:check'), install: c('update:install'), openReleasePage: c('update:openReleasePage') },
   weather: { search: c('weather:search'), current: c('weather:current'), location: c('weather:location'), setLocation: c('weather:setLocation') },

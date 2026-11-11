@@ -10,8 +10,8 @@ import { fail, listFragrances, toResult } from './repo'
 import { getSetting, setSetting } from './settings'
 
 /** Bump when the derived table changes shape or meaning: an older index is rebuilt. */
-export const INDEX_VERSION = 1
-const K = { version: 'discover.index.version', upto: 'discover.index.upto', complete: 'discover.index.complete', scraped: 'discover.dataset.scraped', profile: 'discover.profile' }
+export const INDEX_VERSION = 2
+export const K = { version: 'discover.index.version', upto: 'discover.index.upto', complete: 'discover.index.complete', scraped: 'discover.dataset.scraped', profile: 'discover.profile' }
 const CHUNK = 1500
 
 const tick = () => new Promise<void>((r) => setImmediate(r))
@@ -32,6 +32,7 @@ export function invalidateDiscoverIndex(db: Db): void {
   if (building) building.cancelled = true
   try {
     db.prepare('DELETE FROM discover_features').run()
+    db.prepare('DELETE FROM discover_remind').run()
     setSetting(db, K.upto, '0')
     setSetting(db, K.complete, '0')
     setSetting(db, K.scraped, '')
@@ -102,6 +103,7 @@ export async function buildDiscoverIndex(db: Db, hooks: BuildHooks = {}): Promis
       `SELECT c.id, c.name, c.house, c.year, c.concentration, c.popularity, c.data, e.extra FROM catalog_fragrances c LEFT JOIN catalog_extra e ON e.catalog_id = c.id WHERE c.id > ? ORDER BY c.id LIMIT ${CHUNK}`
     )
     const insert = db.prepare(INSERT)
+    const insertRemind = db.prepare('INSERT OR REPLACE INTO discover_remind (target_fid, source_id, up, down) VALUES (?, ?, ?, ?)')
     while (!state.cancelled && generation === myGeneration) {
       const rows = select.all(upto) as Parameters<typeof rowsToSources>[0]
       if (rows.length === 0) break
@@ -109,6 +111,7 @@ export async function buildDiscoverIndex(db: Db, hooks: BuildHooks = {}): Promis
       db.transaction(() => {
         for (const s of sources) {
           insert.run(buildFeatureRow(s.source))
+          for (const [fid, up, down] of s.source.extra?.rm ?? []) insertRemind.run(fid, s.source.id, up, down)
           scraped = Math.max(scraped, s.scraped)
         }
         upto = rows[rows.length - 1].id
@@ -269,7 +272,7 @@ export function getTaste(db: Db): TasteResult {
 
 // ---- not interested ---------------------------------------------------------------------------------------
 
-const keyOf = (house: string, name: string, conc?: string | null) => `${norm(house)}|${norm(name)}|${norm(conc ?? '')}`
+export const keyOf = (house: string, name: string, conc?: string | null) => `${norm(house)}|${norm(name)}|${norm(conc ?? '')}`
 
 export const listIgnored = (db: Db): IgnoredItem[] => db.prepare('SELECT key, name, house FROM discover_ignored ORDER BY created_at DESC, name').all() as IgnoredItem[]
 
@@ -287,7 +290,7 @@ export function unignoreFragrance(db: Db, key: string): Result<IgnoredItem[]> {
   })
 }
 
-const ignoredSet = (db: Db): Set<string> => new Set(listIgnored(db).map((i) => i.key))
+export const ignoredSet = (db: Db): Set<string> => new Set(listIgnored(db).map((i) => i.key))
 
 // ---- cards ------------------------------------------------------------------------------------------------
 
@@ -301,7 +304,7 @@ interface CatalogCardRow {
   data: string
 }
 
-function libraryIdByKey(library: LibraryItem[]): Map<string, number> {
+export function libraryIdByKey(library: LibraryItem[]): Map<string, number> {
   const m = new Map<string, number>()
   for (const it of library) {
     if (it.wardrobes.length === 0 && !it.isForeign) continue
@@ -311,7 +314,7 @@ function libraryIdByKey(library: LibraryItem[]): Map<string, number> {
   return m
 }
 
-function datasetCards(db: Db, list: Suggestion[], library: LibraryItem[], extra?: (s: Suggestion) => Partial<DiscoverCard>): DiscoverCard[] {
+export function datasetCards(db: Db, list: Suggestion[], library: LibraryItem[], extra?: (s: Suggestion) => Partial<DiscoverCard>): DiscoverCard[] {
   if (list.length === 0) return []
   const ids = list.map((s) => s.catalogId)
   const rows = new Map((db.prepare(`SELECT id, name, house, year, concentration, source_url, data FROM catalog_fragrances WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids) as CatalogCardRow[]).map((r) => [r.id, r]))
@@ -350,7 +353,7 @@ function datasetCards(db: Db, list: Suggestion[], library: LibraryItem[], extra?
 // ---- library-only candidates (no dataset) ---------------------------------------------------------------
 
 /** Fragrances of mine I do not own yet (wishlist, to try, or worn but not mine), as a tiny index so the same scoring applies. */
-function libraryIndex(library: LibraryItem[]): { index: FeatureIndex; items: Map<number, LibraryItem> } {
+export function libraryIndex(library: LibraryItem[]): { index: FeatureIndex; items: Map<number, LibraryItem> } {
   const items = new Map<number, LibraryItem>()
   const rows: FeatureRow[] = []
   for (const it of library) {
@@ -373,7 +376,7 @@ function libraryIndex(library: LibraryItem[]): { index: FeatureIndex; items: Map
   return { index: FeatureIndex.fromRows(rows), items }
 }
 
-function libraryCards(list: Suggestion[], items: Map<number, LibraryItem>): DiscoverCard[] {
+export function libraryCards(list: Suggestion[], items: Map<number, LibraryItem>): DiscoverCard[] {
   return list.flatMap((s): DiscoverCard[] => {
     const it = items.get(-s.catalogId)
     if (!it) return []
@@ -386,11 +389,11 @@ function libraryCards(list: Suggestion[], items: Map<number, LibraryItem>): Disc
 
 // ---- the three modes ------------------------------------------------------------------------------------
 
-const hideOf = (f: DiscoverFilters): Hide => ({ ...DEFAULT_HIDE, ...(f.hide ?? {}) })
+export const hideOf = (f: DiscoverFilters): Hide => ({ ...DEFAULT_HIDE, ...(f.hide ?? {}) })
 
-type Source = { kind: 'dataset'; index: FeatureIndex } | { kind: 'library'; index: FeatureIndex; items: Map<number, LibraryItem> } | { kind: 'none'; message: string }
+export type Source = { kind: 'dataset'; index: FeatureIndex } | { kind: 'library'; index: FeatureIndex; items: Map<number, LibraryItem> } | { kind: 'none'; message: string }
 
-async function pickSource(db: Db, library: LibraryItem[]): Promise<Source> {
+export async function pickSource(db: Db, library: LibraryItem[]): Promise<Source> {
   const st = discoverStatus(db)
   if (st.datasetCount > 0) {
     if (!st.complete) return { kind: 'none', message: st.building ? 'Discovery is preparing the dataset. It will appear here when it is ready.' : 'Discovery needs to prepare the dataset first.' }
@@ -402,7 +405,7 @@ async function pickSource(db: Db, library: LibraryItem[]): Promise<Source> {
   return { kind: 'library', index, items }
 }
 
-const emptyResults = (mode: DiscoverResults['mode'], message: string): DiscoverResults => ({ mode, cards: [], total: 0, hidden: {}, ms: 0, message })
+export const emptyResults = (mode: DiscoverResults['mode'], message: string): DiscoverResults => ({ mode, cards: [], total: 0, hidden: {}, ms: 0, message })
 
 export async function discoverForYou(db: Db, filters: DiscoverFilters = {}): Promise<DiscoverResults> {
   const library = loadLibrary(db)
@@ -455,7 +458,7 @@ function resolveSeeds(db: Db, src: Source, refs: SeedRef[], library: LibraryItem
   return { seeds, names }
 }
 
-function findRow(index: FeatureIndex, it: LibraryItem): number {
+export function findRow(index: FeatureIndex, it: LibraryItem): number {
   const h = norm(it.house)
   const n = norm(it.name)
   const c = norm(it.concentration ?? '')
@@ -492,7 +495,8 @@ export async function discoverBrief(db: Db, req: BriefRequest): Promise<BriefRes
   if (src.kind === 'none') return { ...emptyResults('none', src.message), ...none }
   const brief = normalizeBrief(req.brief)
   const f = req.filters
-  const r = rankBrief(src.index, brief, { limit: f.limit, offset: f.offset, hide: hideOf(f), ignored: ignoredSet(db), datasetDate: getSetting(db, K.scraped) || null, library })
+  const taste = req.useTaste ? getTaste(db).taste : undefined
+  const r = rankBrief(src.index, brief, { limit: f.limit, offset: f.offset, hide: hideOf(f), ignored: ignoredSet(db), datasetDate: getSetting(db, K.scraped) || null, library, taste })
   const cards = src.kind === 'library' ? libraryCards(r.results, src.items) : datasetCards(db, r.results, library)
   // keep the per-criterion detail on the cards
   const byRow = new Map(r.results.map((s) => [s.catalogId, s.criteria]))

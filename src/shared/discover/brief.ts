@@ -1,7 +1,7 @@
 import { PROFILES, NEUTRAL_PROFILE, accordWarmClass, profileFor, targetWarmth } from '../recommend/activities'
 import type { FeatureIndex } from './index'
-import { DEFAULT_HIDE, ignoredRows, libraryRows, orderingQuality, qualityOf, type Hide, type Suggestion } from './rank'
-import type { LibraryItem } from './taste'
+import { DEFAULT_HIDE, compile, fitOf, ignoredRows, libraryRows, orderingQuality, qualityOf, type Hide, type Suggestion } from './rank'
+import type { LibraryItem, TasteProfile } from './taste'
 import { SEASONS, inFamily, longevityWords, norm, plural, sillageWords, type Season } from './vocab'
 
 export type LongevityWish = 'short' | 'moderate' | 'long'
@@ -362,6 +362,8 @@ export interface BriefOptions {
   ignored?: Set<string>
   datasetDate?: string | null
   library: LibraryItem[]
+  /** When given, how well a result matches my taste also counts (25%), so fillers for a gap are ones I would like. */
+  taste?: Pick<TasteProfile, 'accords' | 'notes'>
 }
 export interface BriefSuggestion extends Suggestion {
   criteria: Criterion[]
@@ -384,6 +386,7 @@ export function rankBrief(index: FeatureIndex, brief: Brief, opts: BriefOptions)
   const ctx = compileBrief(index, brief, opts.datasetDate ?? null)
   const mineRows = libraryRows(index, opts.library)
   const ignoredSet = ignoredRows(index, opts.ignored)
+  const compiledTaste = opts.taste ? compile(index, opts.taste) : null
   const hide = opts.hide ?? DEFAULT_HIDE
   const hidden = { owned: 0, garbage: 0, wishlist: 0, toTry: 0, had: 0, ignored: 0 }
   let excluded = 0
@@ -403,7 +406,7 @@ export function rankBrief(index: FeatureIndex, brief: Brief, opts: BriefOptions)
     active = Math.max(active, ev.criteria)
     rowOf[m] = i
     satOf[m] = ev.satisfaction
-    valueOf[m] = 0.8 * ev.satisfaction + 0.2 * orderingQuality(index, i)
+    valueOf[m] = compiledTaste ? 0.55 * ev.satisfaction + 0.25 * fitOf(index, compiledTaste, i).fit + 0.2 * orderingQuality(index, i) : 0.8 * ev.satisfaction + 0.2 * orderingQuality(index, i)
     m++
   }
   const order = Uint32Array.from({ length: m }, (_, k) => k).sort((a, b) => valueOf[b] - valueOf[a] || rowOf[a] - rowOf[b])

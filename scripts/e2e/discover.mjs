@@ -14,7 +14,7 @@ const SHOTS = process.env.SHOTS_DIR
 if (only.length === 0) {
   const { spawnSync } = await import('node:child_process')
   let failed = 0
-  for (const n of [1, 2, 3]) {
+  for (const n of [1, 2, 3, 4]) {
     const r = spawnSync(process.execPath, [new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'), String(n)], { stdio: 'inherit', env: process.env })
     if (r.status !== 0) failed++
   }
@@ -112,6 +112,38 @@ try {
       return waitFor(`document.body.innerText.includes('location') || document.body.innerText.includes('weather in')`, 6000)
     })())
     await shot('discover-brief')
+
+    // Gaps, Layering, Dupes and Budget without a dataset
+    await clickText('[role=tab]', 'Gaps')
+    await waitFor(`document.body.innerText.includes('What is missing')`)
+    const gaps = await app.text()
+    check('Gaps shows what is missing, from the collection and the wear log', /What is missing/.test(gaps) && /fragrances? in My Collection/.test(gaps) && /seasons/i.test(gaps) && /scent families/i.test(gaps))
+    check('each gap says covered, thin or missing', /(covered|thin|missing)/.test(gaps) && (await app.ev(`document.querySelectorAll('section[aria-label=Seasons] li').length`)) === 4)
+    await shot('discover-gaps')
+    await clickText('[role=tab]', 'Layering')
+    await sleep(300)
+    await app.ev(`(() => { const sel = [...document.querySelectorAll('select')].find((s) => s.id.endsWith('-mine')); const opt = [...sel.options].find((o) => /Sauvage/.test(o.textContent)); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(sel, opt.value); sel.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await waitFor(`document.querySelectorAll('article[aria-label]').length > 0`)
+    const lay = await app.text()
+    check('Layering lists partners with the pair score and reasons', /pair score \d+\/100/.test(lay) && /Great pairing|Worth testing|Redundant|clash/.test(lay))
+    const partner = await app.ev(`(() => { const b = [...document.querySelectorAll('article button')].find((x) => x.textContent.includes('Open in the Layering Lab')); if (!b) return ''; const name = b.closest('article').getAttribute('aria-label').split(' by ')[0]; b.click(); return name })()`)
+    await sleep(1200)
+    const labText = await app.text()
+    check('a partner I own opens in the Layering Lab together with the base', partner !== '' && (await app.ev('location.hash')).startsWith('#/layering') && labText.includes('Sauvage') && labText.includes(partner), partner)
+    await app.go('#/discover')
+    await clickText('[role=tab]', 'Dupes')
+    await sleep(500)
+    await app.ev(`(() => { const sel = [...document.querySelectorAll('select')].find((s) => s.id.endsWith('-mine')); const opt = [...sel.options].find((o) => /Sauvage/.test(o.textContent)); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(sel, opt.value); sel.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await sleep(800)
+    check('Dupes asks for the dataset instead of guessing', /Import one/.test(await app.text()))
+    await clickText('[role=tab]', 'Budget')
+    await waitFor(`document.querySelector('#bud-amount')`)
+    await setValue('#bud-amount', '150')
+    await sleep(900)
+    const bud = await app.text()
+    check('Budget compares with my own prices and says it is not the price of any fragrance', /not the price of any fragrance/.test(bud))
+    check('Try before you buy lists wishlist fragrances without a vial, or says why not', /Try before you buy/.test(bud))
+    await shot('discover-budget')
 
     check('no console errors', app.logs.errors.length === 0, app.logs.errors.slice(0, 3).join(' | '))
     check('no unhandled exceptions', app.logs.exceptions.length === 0, app.logs.exceptions.slice(0, 3).join(' | '))
@@ -272,6 +304,68 @@ try {
     await shot('discover-large')
     check('the page shows the first 20 of a very large result set', (await cardNames()).length === 20)
     check('no console errors', app.logs.errors.length === 0, app.logs.errors.slice(0, 3).join(' | '))
+  }
+  if (phase === 4) {
+    console.log('--- Phase 4: gaps, layering, dupes and budget with a synthetic dataset')
+    const dir = mkdtempSync(join(tmpdir(), 'scent-synth-'))
+    const file = join(dir, 'perfumes.jsonl')
+    writeDump(file, 1500)
+    const an = await j(`window.api.importer.analyze(${JSON.stringify(file)})`)
+    await j(`window.api.importer.run(${JSON.stringify(file)}, null, ${JSON.stringify(an.ok ? an.data.suggested : {})}, false)`)
+    await j('window.api.discover.startIndex()')
+    for (let i = 0; i < 200; i++) {
+      if ((await j('window.api.discover.status()')).complete) break
+      await sleep(250)
+    }
+    const withExtras = (await j('window.api.discover.status()')).withExtras
+    check('the synthetic dump carries smells-like votes for the dupes', withExtras === 1500)
+
+    await app.go('#/discover')
+    await clickText('[role=tab]', 'Gaps')
+    await waitFor(`document.body.innerText.includes('What is missing')`)
+    const idea = await app.ev(`(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Ideas to fill it'); if (!b) return false; b.click(); return true })()`)
+    check('a gap offers ideas to fill it', idea === true)
+    check('and they appear, ranked for my taste', await waitFor(`document.querySelectorAll('article[aria-label]').length > 0`, 8000))
+    const heading = await app.ev(`document.querySelector('section[aria-label^="Ideas for"] h3')?.textContent ?? ''`)
+    check('under the name of the gap', /Ideas for/.test(heading), heading)
+    await shot('discover-gaps-dataset')
+
+    await clickText('[role=tab]', 'Layering')
+    await sleep(300)
+    await app.ev(`(() => { const sel = [...document.querySelectorAll('select')].find((s) => s.id.endsWith('-mine')); const opt = [...sel.options].find((o) => /Bleu de Chanel/.test(o.textContent)); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(sel, opt.value); sel.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await waitFor(`document.querySelectorAll('article[aria-label]').length > 3`)
+    const layText = await app.ev(`[...document.querySelectorAll('article[aria-label]')].map((a) => a.innerText).join(' ### ')`)
+    check('layering also suggests partners from the dataset, marked as not yet in the collection', /Synthetic/.test(layText) && /Not in My Collection yet/.test(layText))
+    check('and partners I own, which can be opened in the Lab', /Open in the Layering Lab/.test(layText))
+    await shot('discover-layering')
+
+    // Dupes: a dataset fragrance that others say they remind people of
+    await clickText('[role=tab]', 'Dupes')
+    await sleep(300)
+    await setValue('input[placeholder="Type a name"]', 'Synthetic 000002')
+    await waitFor(`document.querySelector('ul[role=listbox] button')`)
+    await app.ev(`document.querySelector('ul[role=listbox] button').click()`)
+    await waitFor(`document.querySelectorAll('article[aria-label]').length > 0`, 8000)
+    const dupes = await app.text()
+    check('dupes shows the votes behind a link', /say .* reminds them of/.test(dupes))
+    check('and says what the dataset cannot know', /does not say whether a fragrance is discontinued or what it costs/.test(dupes))
+    check('value votes are labelled as opinions, not prices', /These are opinions on value, not a price/.test(dupes))
+    await shot('discover-dupes')
+    // a fragrance I used to have: a replacement
+    const had = (await j('window.api.fragrances.list()')).find((f) => f.wardrobe === 'had')
+    await clickText('button', 'Clear')
+    await sleep(300)
+    await app.ev(`(() => { const sel = [...document.querySelectorAll('select')].find((s) => s.id.endsWith('-mine')); const opt = [...sel.options].find((o) => o.textContent.startsWith(${JSON.stringify(had.name)})); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(sel, opt.value); sel.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await sleep(1200)
+    check('for something I used to have it says these are replacements', /no longer in your collection/.test(await app.text()))
+
+    await clickText('[role=tab]', 'Budget')
+    await waitFor(`document.querySelector('#bud-amount')`)
+    await setValue('#bud-amount', '90')
+    await sleep(800)
+    check('the budget page still answers with a dataset present', /Try before you buy/.test(await app.text()))
+    check('no console errors', app.logs.errors.length === 0, app.logs.errors.slice(0, 3).join(' | '))
+    check('no unhandled exceptions', app.logs.exceptions.length === 0, app.logs.exceptions.slice(0, 3).join(' | '))
   }
 } catch (e) {
   console.log('SCRIPT ERROR', e.stack)

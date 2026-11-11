@@ -24,6 +24,16 @@ export interface DiscoverCard {
   reasons: Reason[]
   inWardrobes: WardrobeName[]
   criteria?: Criterion[]
+  /** Layering partner: how the pair scores and why (the Layering Lab's own engine). */
+  layer?: { score: number; verdict: string; headline: string; reasons: string[] }
+  /** Both fragrances are in My Collection: open them together in the Layering Lab. */
+  labIds?: number[] | null
+  /** Votes and facts behind a link (dupes). */
+  evidence?: string[]
+  /** What my own price data says (never a price I did not enter). */
+  money?: string[]
+  /** "Try before you buy" hint. */
+  trial?: string
 }
 
 export interface DiscoverStatus {
@@ -81,6 +91,8 @@ export interface SimilarResults extends DiscoverResults {
 export interface BriefRequest {
   brief: Brief
   filters: DiscoverFilters
+  /** Also weigh how well a result matches my taste (used to find fillers for a gap). */
+  useTaste?: boolean
 }
 
 export interface BriefResults extends DiscoverResults {
@@ -112,3 +124,44 @@ export interface TasteResult {
 /** What the main process needs from a seed it resolved (for tests). */
 export type ResolvedSeed = Seed & { house: string }
 export type { LibraryItem }
+
+// ---- wardrobe gaps, layering partners, dupes, budget -------------------------------------------------
+
+export interface GapsResult {
+  coverage: import('./gaps').CoverageMap
+}
+
+export interface LayeringResults extends DiscoverResults {
+  base: { name: string; house: string; fragranceId: number | null } | null
+}
+
+export interface DupesResults extends DiscoverResults {
+  source: { name: string; house: string; had: boolean } | null
+  /** Whether the dataset carries "smells like" votes for this fragrance (either direction). */
+  hasVotes: boolean
+  /** Plain notes: what the dataset cannot say (discontinued, prices), and what to do about missing votes. */
+  notes: string[]
+}
+
+export interface BudgetResults {
+  currency: string
+  reference: import('./budget').PriceReference
+  estimate: import('./budget').CostEstimate | null
+  verdict: { label: string; text: string }
+  trial: DiscoverCard[]
+  message: string | null
+}
+
+export interface GiftItem {
+  key: string
+  name: string
+  house: string
+  note: string | null
+}
+export interface GiftList {
+  id: number
+  name: string
+  persona: unknown
+  items: GiftItem[]
+  updatedAt: string
+}

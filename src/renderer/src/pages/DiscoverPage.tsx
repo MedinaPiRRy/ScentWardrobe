@@ -9,19 +9,26 @@ import type { Season } from '@shared/discover/vocab'
 import type { FragranceInput, Placement } from '@shared/types'
 import type { TempUnit } from '@shared/weather'
 import BriefPanel from '../components/discover/BriefPanel'
-import ResultCard from '../components/discover/ResultCard'
 import SimilarPanel, { type SeedChoice } from '../components/discover/SimilarPanel'
+import CardGrid from '../components/discover/CardGrid'
+import GapsPanel from '../components/discover/GapsPanel'
+import { BudgetPanel, DupesPanel, LayeringPanel } from '../components/discover/PartnerPanels'
 import TastePanel from '../components/discover/TastePanel'
 import FragranceForm from '../components/FragranceForm'
 import ImportWizard from '../components/ImportWizard'
 import { ghostBtn, primaryBtn } from '../components/Dialogs'
 
-type Mode = 'for_you' | 'similar' | 'brief'
+type Mode = 'for_you' | 'similar' | 'brief' | 'gaps' | 'layering' | 'dupes' | 'budget'
 const MODES: { key: Mode; label: string; hint: string }[] = [
   { key: 'for_you', label: 'For you', hint: 'Suggestions from your own taste' },
   { key: 'similar', label: 'More like these', hint: 'Start from fragrances you pick' },
-  { key: 'brief', label: 'Brief', hint: 'Describe what you need' }
+  { key: 'brief', label: 'Brief', hint: 'Describe what you need' },
+  { key: 'gaps', label: 'Gaps', hint: 'Where your collection is thin' },
+  { key: 'layering', label: 'Layering', hint: 'Partners to layer with' },
+  { key: 'dupes', label: 'Dupes', hint: 'Alternatives and replacements' },
+  { key: 'budget', label: 'Budget', hint: 'Budget and trying first' }
 ]
+const SEARCH_MODES: Mode[] = ['for_you', 'similar', 'brief']
 
 interface Filters {
   season: Season | null
@@ -55,6 +62,8 @@ export default function DiscoverPage() {
   const [filters, setFilters] = useState<Filters>(loadFilters)
   const [limit, setLimit] = useState(PAGE)
   const [seeds, setSeeds] = useState<SeedChoice[]>([])
+  const [layerSeed, setLayerSeed] = useState<SeedChoice | null>(null)
+  const [dupeSeed, setDupeSeed] = useState<SeedChoice | null>(null)
   const [sliders, setSliders] = useState<Sliders>(NO_SLIDERS)
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF)
   const [savedBriefs, setSavedBriefs] = useState<SavedBrief[]>([])
@@ -103,7 +112,7 @@ export default function DiscoverPage() {
   // ---- fetching results ------------------------------------------------------------------------
   const ready = status != null && (status.datasetCount === 0 || status.complete)
   useEffect(() => {
-    if (!ready) return
+    if (!ready || !SEARCH_MODES.includes(mode)) return
     const mine = ++token.current
     const f: DiscoverFilters = { limit, season: filters.season, minVotes: filters.minVotes || undefined, genderLean: filters.genderLean, hide: filters.hide }
     setLoading(true)
@@ -171,6 +180,14 @@ export default function DiscoverPage() {
     setSeeds([{ ref, name: c.name, house: c.house }])
     setMode('similar')
     window.scrollTo?.({ top: 0 })
+  }
+
+  const actions = {
+    onAdd: (c: DiscoverCard, to: 'wishlist' | 'to_try') => void startAdd(c, to),
+    onIgnore: (c: DiscoverCard) => void ignore(c),
+    onMoreLike: moreLike,
+    onOpenMine: (id: number) => navigate(`/?open=${id}`),
+    onOpenLab: (ids: number[]) => navigate(`/layering?mix=${ids.join(',')}`)
   }
 
   const hideBox = (key: keyof Hide, label: string) => (
@@ -255,6 +272,12 @@ export default function DiscoverPage() {
       {mode === 'similar' && <SimilarPanel seeds={seeds} onSeeds={setSeeds} sliders={sliders} onSliders={setSliders} last={results && 'seeds' in results ? (results as SimilarResults) : null} />}
       {mode === 'brief' && <BriefPanel brief={brief} onBrief={setBrief} saved={savedBriefs} onSaved={setSavedBriefs} unit={unit} />}
 
+      {mode === 'gaps' && <GapsPanel actions={actions} rev={rev} />}
+      {mode === 'layering' && <LayeringPanel actions={actions} seed={layerSeed} onSeed={setLayerSeed} rev={rev} />}
+      {mode === 'dupes' && <DupesPanel actions={actions} seed={dupeSeed} onSeed={setDupeSeed} rev={rev} />}
+      {mode === 'budget' && <BudgetPanel actions={actions} rev={rev} />}
+
+      {SEARCH_MODES.includes(mode) && (
       <section className={`${card} flex flex-wrap items-end gap-4`} aria-label="Filters">
         {noDataset ? null : (
           <>
@@ -309,7 +332,9 @@ export default function DiscoverPage() {
           Reset filters
         </button>
       </section>
+      )}
 
+      {SEARCH_MODES.includes(mode) && (
       <section aria-label="Results" aria-busy={loading}>
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-sm text-cream/80" role="status">
           <span>
@@ -324,11 +349,7 @@ export default function DiscoverPage() {
         </div>
         {error && <p className="rounded border border-red-400/50 bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}
         {results?.message && cards.length === 0 && <p className={`${card} text-sm text-cream/85`}>{results.message}</p>}
-        <div className="grid gap-3 lg:grid-cols-2">
-          {cards.map((c) => (
-            <ResultCard key={c.key} card={c} onAdd={(x, to) => void startAdd(x, to)} onIgnore={(x) => void ignore(x)} onMoreLike={moreLike} onOpenMine={(id) => navigate(`/?open=${id}`)} />
-          ))}
-        </div>
+        <CardGrid cards={cards} actions={actions} />
         {cards.length > 0 && cards.length < total && (
           <div className="mt-4 text-center">
             <button className={ghostBtn} onClick={() => setLimit((n) => n + PAGE)}>
@@ -337,6 +358,7 @@ export default function DiscoverPage() {
           </div>
         )}
       </section>
+      )}
 
       {ignored.length > 0 && (
         <details className={card}>

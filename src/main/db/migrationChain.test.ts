@@ -59,14 +59,15 @@ describe.each(migrations.map((m) => m.version))('a database created at schema ve
     expect(history).toEqual(start < 9 ? [{ id: 1, rating: 8, source: 'earlier' }] : [])
 
     // Discovery tables (schema 11) exist, start empty, and the imported dataset row is untouched.
-    for (const t of ['catalog_extra', 'discover_features', 'discover_ignored', 'discover_briefs']) expect((db.prepare(`SELECT count(*) AS c FROM ${t}`).get() as { c: number }).c).toBe(0)
+    for (const t of ['catalog_extra', 'discover_features', 'discover_ignored', 'discover_briefs', 'discover_remind', 'discover_gift_lists', 'discover_gift_items']) expect((db.prepare(`SELECT count(*) AS c FROM ${t}`).get() as { c: number }).c).toBe(0)
     if (start >= 2) expect(rows('SELECT id, name, house FROM catalog_fragrances')).toEqual([{ id: 1, name: 'Imported', house: 'Some House' }])
     if (start >= 2) {
       // extras and features follow their dataset row when it goes away
       db.prepare("INSERT INTO catalog_extra (catalog_id, extra) VALUES (1, '{}')").run()
       db.prepare("INSERT INTO discover_features (catalog_id, house_key, name_key, accords, notes) VALUES (1, 'h', 'n', '', '')").run()
+      db.prepare('INSERT INTO discover_remind (target_fid, source_id, up, down) VALUES (5, 1, 10, 1)').run()
       db.prepare('DELETE FROM catalog_fragrances WHERE id = 1').run()
-      expect((db.prepare('SELECT (SELECT count(*) FROM catalog_extra) + (SELECT count(*) FROM discover_features) AS c').get() as { c: number }).c).toBe(0)
+      expect((db.prepare('SELECT (SELECT count(*) FROM catalog_extra) + (SELECT count(*) FROM discover_features) + (SELECT count(*) FROM discover_remind) AS c').get() as { c: number }).c).toBe(0)
     }
 
     // Structural health.
