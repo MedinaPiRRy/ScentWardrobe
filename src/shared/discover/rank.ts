@@ -114,6 +114,14 @@ export function qualityOf(index: FeatureIndex, i: number): number | null {
   return Math.min(1, Math.max(0, (shrunk - 3.2) / 1.4))
 }
 
+/**
+ * Quality for ordering: the rating when the dataset has one, else how well known the fragrance is (a dataset imported
+ * without ratings would otherwise let very obscure entries outrank everything). Never shown as a rating.
+ */
+export function orderingQuality(index: FeatureIndex, i: number): number {
+  return qualityOf(index, i) ?? 0.25 + 0.6 * index.popRank[i]
+}
+
 /** How much to trust the community numbers 0-1: the number of voters, else how well known it is. */
 export function confidenceOf(index: FeatureIndex, i: number): number {
   const p = index.people[i]
@@ -124,11 +132,7 @@ export function confidenceOf(index: FeatureIndex, i: number): number {
 /** Blends fit with community quality and confidence. Without community numbers (a library-only index) the fit stands alone. */
 export function blend(index: FeatureIndex, i: number, fit: number, hasCommunity: boolean): number {
   if (!hasCommunity) return fit
-  const q = qualityOf(index, i)
-  const parts: [number, number][] = [[fit, 0.7], [confidenceOf(index, i), 0.1]]
-  if (q != null) parts.push([q, 0.2])
-  const w = parts.reduce((s, [, x]) => s + x, 0)
-  return parts.reduce((s, [v, x]) => s + v * x, 0) / w
+  return 0.7 * fit + 0.1 * confidenceOf(index, i) + 0.2 * orderingQuality(index, i)
 }
 
 // ---- who owns what -----------------------------------------------------------------------------------
@@ -224,6 +228,7 @@ export function explainRow(index: FeatureIndex, i: number, taste: Pick<TasteProf
   const r = index.rating[i]
   const rn = index.ratingN[i]
   if (!Number.isNaN(r) && rn >= 200) reasons.push({ kind: 'rating', text: `rated ${r.toFixed(2)}/5 by ${rn.toLocaleString('en-US')} people` })
+  else if (index.popRank[i] >= 0.8) reasons.push({ kind: 'info', text: `well known: more popular than ${Math.round(index.popRank[i] * 100)}% of the dataset` })
   const l = index.longevity[i]
   if (!Number.isNaN(l)) reasons.push({ kind: 'longevity', text: `${longevityWords(l)} (${l.toFixed(1)}/5 from the community)` })
   return reasons

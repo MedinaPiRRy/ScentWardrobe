@@ -1,6 +1,6 @@
 import { PROFILES, NEUTRAL_PROFILE, accordWarmClass, profileFor, targetWarmth } from '../recommend/activities'
 import type { FeatureIndex } from './index'
-import { DEFAULT_HIDE, ignoredRows, libraryRows, qualityOf, type Hide, type Suggestion } from './rank'
+import { DEFAULT_HIDE, ignoredRows, libraryRows, orderingQuality, qualityOf, type Hide, type Suggestion } from './rank'
 import type { LibraryItem } from './taste'
 import { SEASONS, inFamily, longevityWords, norm, plural, sillageWords, type Season } from './vocab'
 
@@ -401,10 +401,9 @@ export function rankBrief(index: FeatureIndex, brief: Brief, opts: BriefOptions)
       continue
     }
     active = Math.max(active, ev.criteria)
-    const q = qualityOf(index, i)
     rowOf[m] = i
     satOf[m] = ev.satisfaction
-    valueOf[m] = 0.8 * ev.satisfaction + 0.2 * (q ?? 0.5)
+    valueOf[m] = 0.8 * ev.satisfaction + 0.2 * orderingQuality(index, i)
     m++
   }
   const order = Uint32Array.from({ length: m }, (_, k) => k).sort((a, b) => valueOf[b] - valueOf[a] || rowOf[a] - rowOf[b])
