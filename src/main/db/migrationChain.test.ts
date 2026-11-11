@@ -23,6 +23,8 @@ function seed(db: Database.Database, start: number): void {
     INSERT INTO personal_notes (fragrance_id, text) VALUES (1, 'my signature');
     INSERT INTO settings (key, value) VALUES ('ui.theme', 'dark');
   `)
+  // An imported dataset row exists from schema 2 on; Discovery (schema 11) must leave it alone.
+  if (start >= 2) db.exec("INSERT INTO catalog_fragrances (id, name, house, data) VALUES (1, 'Imported', 'Some House', '{}')")
 }
 
 describe.each(migrations.map((m) => m.version))('a database created at schema version %i', (start) => {
@@ -55,6 +57,17 @@ describe.each(migrations.map((m) => m.version))('a database created at schema ve
     // Ratings that existed before rating history (schema 9) become its first entries.
     const history = rows('SELECT fragrance_id AS id, rating, source FROM rating_history')
     expect(history).toEqual(start < 9 ? [{ id: 1, rating: 8, source: 'earlier' }] : [])
+
+    // Discovery tables (schema 11) exist, start empty, and the imported dataset row is untouched.
+    for (const t of ['catalog_extra', 'discover_features', 'discover_ignored', 'discover_briefs']) expect((db.prepare(`SELECT count(*) AS c FROM ${t}`).get() as { c: number }).c).toBe(0)
+    if (start >= 2) expect(rows('SELECT id, name, house FROM catalog_fragrances')).toEqual([{ id: 1, name: 'Imported', house: 'Some House' }])
+    if (start >= 2) {
+      // extras and features follow their dataset row when it goes away
+      db.prepare("INSERT INTO catalog_extra (catalog_id, extra) VALUES (1, '{}')").run()
+      db.prepare("INSERT INTO discover_features (catalog_id, house_key, name_key, accords, notes) VALUES (1, 'h', 'n', '', '')").run()
+      db.prepare('DELETE FROM catalog_fragrances WHERE id = 1').run()
+      expect((db.prepare('SELECT (SELECT count(*) FROM catalog_extra) + (SELECT count(*) FROM discover_features) AS c').get() as { c: number }).c).toBe(0)
+    }
 
     // Structural health.
     expect(db.pragma('foreign_key_check')).toEqual([])

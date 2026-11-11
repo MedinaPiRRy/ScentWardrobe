@@ -1,4 +1,5 @@
 import type { ColumnMapping, CommunityData, FragranceInput, MappingField, NoteLayer } from '@shared/types'
+import { extraFromDump, type CatalogExtra } from '@shared/discover/extra'
 import type { Row } from './sources'
 
 export const MAPPING_FIELDS: { field: MappingField; label: string; multi?: boolean }[] = [
@@ -228,7 +229,7 @@ export function parseAccords(values: string[]): { name: string; strength: number
 // ---- row mapping ----------------------------------------------------------------------------
 
 /** A mapped row plus the popularity used to rank search results (not part of the saved fragrance). */
-export type MappedEntry = FragranceInput & { popularity?: number }
+export type MappedEntry = FragranceInput & { popularity?: number; extra?: CatalogExtra }
 
 const cell = (row: Row, cols?: string[]) => (cols ?? []).map((c) => row[c] ?? '').filter((v) => v.trim() !== '')
 const num = (v: string): number | null => {
@@ -280,6 +281,15 @@ export function mapRow(row: Row, m: ColumnMapping): MappedEntry | null {
   if (!img && id && /fragrantica\./i.test(url)) img = fragranticaImage(id)
 
   const popularity = num(first('popularity'))
+  // The CSV edition of the dump also carries the rating average, its vote count and the number of voters.
+  const ra = num(row['rating_avg'] ?? '')
+  const rn = num(row['vote_count'] ?? '')
+  const people = num(row['people'] ?? '')
+  const extra: CatalogExtra = {}
+  if (id && /^\d+$/.test(id)) extra.fid = Number(id)
+  if (ra != null && rn != null && rn > 0) extra.rating = { a: ra, n: rn }
+  if (people != null && people > 0) extra.people = people
+  const hasExtra = extra.rating !== undefined || extra.people !== undefined
   return {
     name,
     house,
@@ -296,7 +306,8 @@ export function mapRow(row: Row, m: ColumnMapping): MappedEntry | null {
       winter: num(first('seasonWinter')), spring: num(first('seasonSpring')), summer: num(first('seasonSummer')), fall: num(first('seasonFall')),
       day: num(first('dayVotes')), night: num(first('nightVotes')), longevity: num(first('longevity')), sillage: num(first('sillage'))
     }),
-    ...(popularity != null ? { popularity } : {})
+    ...(popularity != null ? { popularity } : {}),
+    ...(hasExtra ? { extra } : {})
   }
 }
 
@@ -344,6 +355,7 @@ export function mapDumpRecord(o: Obj): MappedEntry | null {
   const year = asNum(o.year)
   const popularity = asNum(asObj(o.popularity).magnitude)
   const hasVotes = Object.keys(seasons).length > 0 || Object.keys(daypart).length > 0
+  const extra = extraFromDump(o)
 
   return {
     name,
@@ -363,6 +375,7 @@ export function mapDumpRecord(o: Obj): MappedEntry | null {
           day: asNum(daypart.day), night: asNum(daypart.night), longevity: asNum(asObj(o.longevity).average), sillage: asNum(asObj(o.sillage).average)
         })
       : null,
-    ...(popularity != null ? { popularity } : {})
+    ...(popularity != null ? { popularity } : {}),
+    ...(extra ? { extra } : {})
   }
 }

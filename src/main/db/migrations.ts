@@ -428,6 +428,59 @@ WHEN EXISTS (
 )
 BEGIN SELECT RAISE(ABORT, 'WISHLIST_IMPRESSION_REQUIRED'); END;
 `
+  },
+  {
+    version: 11,
+    name: 'discovery',
+    sql: `
+-- Extra per-fragrance facts a re-import of the full dump keeps (note weights, rating and value votes, collection counts,
+-- "reminds me of" votes). Optional: Discovery works with what is there.
+CREATE TABLE catalog_extra (
+  catalog_id INTEGER PRIMARY KEY REFERENCES catalog_fragrances(id) ON DELETE CASCADE,
+  extra TEXT NOT NULL
+);
+
+-- Derived, query-friendly copy of the dataset used by Discovery. Rebuilt in the background (state lives in "settings",
+-- keys discover.index.*), so it can always be thrown away and recreated from catalog_fragrances + catalog_extra.
+CREATE TABLE discover_features (
+  catalog_id INTEGER PRIMARY KEY REFERENCES catalog_fragrances(id) ON DELETE CASCADE,
+  fid INTEGER,
+  house_key TEXT NOT NULL,
+  name_key TEXT NOT NULL,
+  conc_key TEXT NOT NULL DEFAULT '',
+  accords TEXT NOT NULL,
+  notes TEXT NOT NULL,
+  v_winter INTEGER, v_spring INTEGER, v_summer INTEGER, v_fall INTEGER,
+  v_day INTEGER, v_night INTEGER,
+  longevity REAL, sillage REAL,
+  rating REAL, rating_n INTEGER,
+  value_avg REAL, value_n INTEGER,
+  people INTEGER,
+  have_n INTEGER, want_n INTEGER,
+  popularity INTEGER NOT NULL DEFAULT 0,
+  pop_recent INTEGER,
+  gender_lean REAL,
+  year INTEGER
+);
+CREATE INDEX ix_discover_features_fid ON discover_features (fid);
+
+-- "Not interested": remembered by identity (house + name + concentration) so it survives a dataset re-import.
+CREATE TABLE discover_ignored (
+  key TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  house TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Saved briefs (Discovery).
+CREATE TABLE discover_briefs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  brief TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`
   }
 ]
 

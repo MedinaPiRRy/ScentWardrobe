@@ -336,6 +336,8 @@ export interface ImportProgress {
 export interface ImportResult {
   imported: number
   skipped: number
+  /** Rows already in the dataset that received extra facts (note weights, votes) from this file. */
+  enriched?: number
   totalInCatalog: number
 }
 

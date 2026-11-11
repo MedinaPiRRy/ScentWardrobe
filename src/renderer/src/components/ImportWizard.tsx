@@ -79,7 +79,7 @@ export default function ImportWizard({ onClose, onDone }: { onClose: () => void;
     const r = await window.api.importer.run(a.path, a.table, mapping, replace)
     setBusy(false)
     if (!r.ok) return setError(r.message)
-    onDone(`Imported ${r.data.imported.toLocaleString()} fragrances (${r.data.skipped.toLocaleString()} skipped). The dataset now has ${r.data.totalInCatalog.toLocaleString()}.`)
+    onDone(`Imported ${r.data.imported.toLocaleString()} fragrances (${r.data.skipped.toLocaleString()} skipped${r.data.enriched ? `, ${r.data.enriched.toLocaleString()} updated with extra facts` : ""}). The dataset now has ${r.data.totalInCatalog.toLocaleString()}.`)
   }
 
   const clear = async () => {

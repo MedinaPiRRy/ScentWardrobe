@@ -3,6 +3,7 @@ import type { ColumnMapping, FragranceInput, ImportPreview, ImportResult, LocalH
 import type { Db } from '../db'
 import { normalize, prepare, score, tokens, type Searchable } from './fuzzy'
 import { isFragranticaDump, mapDumpRecord, mapRow, type MappedEntry } from './mapping'
+import { invalidateDiscoverIndex } from '../db/discover'
 import { openSource, type Source } from './sources'
 
 interface IndexRow {
@@ -85,6 +86,7 @@ export function datasetEntry(db: Db, id: number): FragranceInput | null {
 
 export function clearDataset(db: Db): void {
   db.prepare('DELETE FROM catalog_fragrances').run()
+  invalidateDiscoverIndex(db)
   dropIndex()
 }
 
@@ -137,15 +139,17 @@ export async function runImport(
 ): Promise<ImportResult> {
   const src = openSource(path, table ?? undefined)
   const insert = db.prepare('INSERT INTO catalog_fragrances (name, house, year, concentration, data, popularity, source_url) VALUES (?, ?, ?, ?, ?, ?, ?)')
+  const putExtra = db.prepare('INSERT OR REPLACE INTO catalog_extra (catalog_id, extra) VALUES (?, ?)')
   let imported = 0
+  let enriched = 0
   let skipped = 0
   let seen = 0
   try {
     if (replace) clearDataset(db)
     // Existing rows are remembered in memory: a per-row lookup would be quadratic on a 140k-row dataset.
-    const known = new Set<string>()
-    for (const r of db.prepare('SELECT name, house, concentration, source_url FROM catalog_fragrances').iterate() as Iterable<{ name: string; house: string; concentration: string | null; source_url: string | null }>) {
-      known.add(r.source_url ? `u:${r.source_url}` : `n:${r.name.toLowerCase()}|${r.house.toLowerCase()}|${(r.concentration ?? '').toLowerCase()}`)
+    const known = new Map<string, number>()
+    for (const r of db.prepare('SELECT id, name, house, concentration, source_url FROM catalog_fragrances').iterate() as Iterable<{ id: number; name: string; house: string; concentration: string | null; source_url: string | null }>) {
+      known.set(r.source_url ? `u:${r.source_url}` : `n:${r.name.toLowerCase()}|${r.house.toLowerCase()}|${(r.concentration ?? '').toLowerCase()}`, r.id)
     }
 
     let batch: MappedEntry[] = []
@@ -153,13 +157,20 @@ export async function runImport(
       db.transaction(() => {
         for (const e of batch) {
           const key = identity(e)
-          if (known.has(key)) {
+          const have = known.get(key)
+          if (have != null) {
+            // Importing the same file again adds nothing new, but fills in the extra facts older imports did not keep.
+            if (e.extra) {
+              putExtra.run(have, JSON.stringify(e.extra))
+              enriched++
+            }
             skipped++
             continue
           }
-          known.add(key)
-          const { popularity, ...entry } = e
-          insert.run(e.name, e.house, e.year ?? null, e.concentration ?? null, JSON.stringify(entry), Math.round(popularity ?? 0), e.sourceUrl ?? null)
+          const { popularity, extra, ...entry } = e
+          const r = insert.run(e.name, e.house, e.year ?? null, e.concentration ?? null, JSON.stringify(entry), Math.round(popularity ?? 0), e.sourceUrl ?? null)
+          known.set(key, Number(r.lastInsertRowid))
+          if (extra) putExtra.run(Number(r.lastInsertRowid), JSON.stringify(extra))
           imported++
         }
       })()
@@ -183,6 +194,7 @@ export async function runImport(
   } finally {
     src.close()
     dropIndex()
+    invalidateDiscoverIndex(db)
   }
-  return { imported, skipped, totalInCatalog: datasetCount(db) }
+  return { imported, skipped, enriched, totalInCatalog: datasetCount(db) }
 }
