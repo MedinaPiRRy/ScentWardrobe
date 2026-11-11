@@ -103,6 +103,14 @@ export function profileFor(activity: string): ActivityProfile {
 const WARM_WEATHER_ACCORDS = new Set(['citrus', 'fresh', 'aquatic', 'green', 'ozonic', 'fruity', 'herbal', 'tropical', 'coconut', 'aromatic', 'marine', 'salty', 'soapy', 'terpenic'])
 const COLD_WEATHER_ACCORDS = new Set(['amber', 'vanilla', 'oud', 'warm spicy', 'tobacco', 'leather', 'balsamic', 'boozy', 'sweet', 'caramel', 'coffee', 'honey', 'cinnamon', 'smoky', 'animalic', 'chocolate', 'cacao', 'nutty', 'rum', 'whiskey', 'beeswax'])
 
+/** How one accord counts toward warmth: +1 cosy/heavy, -1 fresh/light, -0.5 fresh spicy, 0 neither (the same rule warmthIndex applies). */
+export function accordWarmClass(name: string): number {
+  const n = name.trim().toLowerCase()
+  if (COLD_WEATHER_ACCORDS.has(n)) return 1
+  if (WARM_WEATHER_ACCORDS.has(n)) return -1
+  return n === 'fresh spicy' ? -0.5 : 0
+}
+
 /**
  * -1 (very fresh / light) .. +1 (very warm / heavy), from how strong the fresh vs. the cosy accords are.
  * Accords in neither group (woody, floral...) dilute the result towards 0.

@@ -1,3 +1,6 @@
+import type { Brief } from './discover/brief'
+import type { BriefRequest, BriefResults, DiscoverFilters, DiscoverResults, DiscoverStatus, IgnoredItem, SavedBrief, SimilarRequest, SimilarResults, TasteResult } from './discover/dto'
+import type { Override } from './discover/taste'
 import type { RatingSuggestion } from './rating'
 import type { LayerItem, RatedCombo } from './layering/types'
 import type { RecItem } from './recommend/types'
@@ -50,6 +53,24 @@ export interface Api {
     version(): Promise<string>
     /** Opens the data folder in Explorer. */
     openDataFolder(): Promise<void>
+  }
+  discover: {
+    status(): Promise<DiscoverStatus>
+    /** Starts building the Discovery index in the background (safe to call again; it resumes). */
+    startIndex(): Promise<DiscoverStatus>
+    cancelIndex(): Promise<DiscoverStatus>
+    taste(): Promise<TasteResult>
+    /** Love, mute or avoid an accord or note in my taste profile; null removes my edit. */
+    setOverride(kind: 'accord' | 'note', name: string, value: Override | null): Promise<Result<TasteResult>>
+    forYou(filters: DiscoverFilters): Promise<DiscoverResults>
+    similar(req: SimilarRequest): Promise<SimilarResults>
+    brief(req: BriefRequest): Promise<BriefResults>
+    ignored(): Promise<IgnoredItem[]>
+    ignore(f: { name: string; house: string; concentration?: string | null }): Promise<Result<IgnoredItem[]>>
+    unignore(key: string): Promise<Result<IgnoredItem[]>>
+    briefs(): Promise<SavedBrief[]>
+    saveBrief(name: string, brief: Brief): Promise<Result<SavedBrief[]>>
+    deleteBrief(id: number): Promise<Result<SavedBrief[]>>
   }
   update: {
     /** Asks GitHub for the newest release. Only runs when the user presses the button. */

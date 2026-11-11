@@ -82,6 +82,11 @@ const api: Api = {
     deleteCombo: c('layering:deleteCombo')
   },
   recommend: { candidates: c('recommend:candidates') },
+  discover: {
+    status: c('discover:status'), startIndex: c('discover:startIndex'), cancelIndex: c('discover:cancelIndex'), taste: c('discover:taste'), setOverride: c('discover:setOverride'),
+    forYou: c('discover:forYou'), similar: c('discover:similar'), brief: c('discover:brief'), ignored: c('discover:ignored'), ignore: c('discover:ignore'), unignore: c('discover:unignore'),
+    briefs: c('discover:briefs'), saveBrief: c('discover:saveBrief'), deleteBrief: c('discover:deleteBrief')
+  },
   update: { check: c('update:check'), install: c('update:install'), openReleasePage: c('update:openReleasePage') },
   weather: { search: c('weather:search'), current: c('weather:current'), location: c('weather:location'), setLocation: c('weather:setLocation') },
   stats: { overview: c('stats:overview') },

@@ -43,6 +43,7 @@ import { computeOverview } from './db/stats'
 import { completeFollowUp, deleteWear, dismissFollowUp, listWears, listWearsRange, logWear, pendingFollowUps, updateWear } from './db/wears'
 import { AppError, dbInfo, fail, getFragrance, listFragrances, listPastBottles, toResult } from './db/repo'
 import { moveToWardrobe, removeFromWardrobe, reorderWardrobe, setWardrobeDetails } from './db/memberships'
+import { cancelDiscoverIndex, deleteBrief, discoverBrief, discoverForYou, discoverSimilar, discoverStatus, getTaste, ignoreFragrance, listBriefs, listIgnored, saveBrief, setOverride, startDiscoverIndex, unignoreFragrance } from './db/discover'
 import { checkForUpdate, installUpdate, openReleasePage } from './updater'
 import { clearSampleData, seedSampleData } from './db/seed'
 
@@ -73,6 +74,20 @@ export function registerIpc(db: Db, dbPath: string): void {
     'app:version': () => app.getVersion(),
     'app:paths': () => appPaths(paths),
     'app:openDataFolder': async () => void (await shell.openPath(app.getPath('userData'))),
+    'discover:status': () => discoverStatus(db),
+    'discover:startIndex': () => startDiscoverIndex(db),
+    'discover:cancelIndex': () => cancelDiscoverIndex(db),
+    'discover:taste': () => getTaste(db),
+    'discover:setOverride': (k: 'accord' | 'note', n: string, v: Parameters<Api['discover']['setOverride']>[2]) => setOverride(db, k, n, v),
+    'discover:forYou': (f: Parameters<Api['discover']['forYou']>[0]) => discoverForYou(db, f),
+    'discover:similar': (r: Parameters<Api['discover']['similar']>[0]) => discoverSimilar(db, r),
+    'discover:brief': (r: Parameters<Api['discover']['brief']>[0]) => discoverBrief(db, r),
+    'discover:ignored': () => listIgnored(db),
+    'discover:ignore': (f: Parameters<Api['discover']['ignore']>[0]) => ignoreFragrance(db, f),
+    'discover:unignore': (k: string) => unignoreFragrance(db, k),
+    'discover:briefs': () => listBriefs(db),
+    'discover:saveBrief': (n: string, b: Parameters<Api['discover']['saveBrief']>[1]) => saveBrief(db, n, b),
+    'discover:deleteBrief': (id: number) => deleteBrief(db, id),
     'update:check': () => checkForUpdate(),
     'update:install': () => installUpdate(db, paths),
     'update:openReleasePage': () => openReleasePage(),
